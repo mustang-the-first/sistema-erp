@@ -7,7 +7,8 @@ from app.core.config import get_settings
 from app.models import Base
 
 config = context.config
-if config.config_file_name is not None:
+# Tests pass configure_logger=False so Alembic does not reset pytest's logging.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 # An explicit -x / set_main_option URL wins (tests use it); otherwise read settings.

@@ -67,7 +67,13 @@ Variables en `.env` (ver `.env.example`), prefijo `ERP_`. Los tests usan `ERP_TE
   dentro de una transacción con `join_transaction_mode="create_savepoint"` y rollback al final.
   Marca `@pytest.mark.integration`.
 - Tests de concurrencia (stock y numeración) — conexiones separadas, limpieza por `TRUNCATE`.
-  Marca `@pytest.mark.concurrency`.
+  Marca `@pytest.mark.concurrency`. Usan `committed_factory` (engine propio, nunca el de
+  savepoints; no se combina con `db`) y el helper `run_concurrently` (Session propia por thread,
+  cerrada en `finally`; `join` con timeout).
+- **Un cuelgue es un fallo, nunca una espera:** pytest-timeout 30 s (60 s para `concurrency`), y
+  las conexiones de test llevan `lock_timeout=5s`, `statement_timeout=15s` e
+  `idle_in_transaction_session_timeout=10s`. No subas estos límites para que un test pase.
+- Repetir para detectar flakiness: `timeout 300 uv run pytest -m concurrency --count=10 -x`.
 - `tests/e2e/` — flujo order-to-cash completo con chequeos cruzados. Marca `@pytest.mark.e2e`.
 - Datos de prueba con `tests/factories/`; clientes HTTP por rol con el fixture `client_as(role)`.
 - Nombres: `test_<qué>_<condición>_<resultado>`. Estructura Arrange / Act / Assert.

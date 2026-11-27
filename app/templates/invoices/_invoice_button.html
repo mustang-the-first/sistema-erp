@@ -1,0 +1,8 @@
+{# "Facturar" action for one delivery note (needs `note` in the context). Reusable from
+   orders/detail.html: {% with note=dn %}{% include "invoices/_invoice_button.html" %}{% endwith %} #}
+<form class="invoice-action no-print" hx-post="/delivery-notes/{{ note.id }}/invoice" hx-target="#flash">
+  <fieldset role="group">
+    <input type="date" name="date" aria-label="Fecha de factura" min="{{ note.date.isoformat() }}">
+    <button type="submit">Facturar</button>
+  </fieldset>
+</form>

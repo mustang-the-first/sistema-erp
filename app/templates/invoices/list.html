@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Facturas · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Facturas</h1>
+
+<form method="get" action="/invoices" class="no-print">
+  <div class="grid">
+    <label>Cliente
+      <select name="customer_id">
+        <option value="">Todos</option>
+        {% for c in customers %}
+        <option value="{{ c.id }}"{% if filters.customer_id == c.id|string %} selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Letra
+      <select name="letter">
+        <option value="">Todas</option>
+        {% for l in ["A", "B"] %}<option value="{{ l }}"{% if filters.letter == l %} selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Desde <input type="date" name="from" value="{{ filters.from }}"></label>
+    <label>Hasta <input type="date" name="to" value="{{ filters.to }}"></label>
+    <label>Estado
+      <select name="status">
+        <option value="">Todos</option>
+        <option value="open"{% if filters.status == "open" %} selected{% endif %}>Pendiente</option>
+        <option value="paid"{% if filters.status == "paid" %} selected{% endif %}>Cobrada</option>
+      </select>
+    </label>
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+
+<table class="striped">
+  <thead>
+    <tr>
+      <th>Comprobante</th><th>Fecha</th><th>Vencimiento</th><th>Cliente</th>
+      <th class="num">Total</th><th class="num">Saldo</th><th>Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in page.items %}
+    <tr>
+      <td><a href="/invoices/{{ v.invoice.id }}">Factura {{ v.invoice.letter }} {{ v.formatted_number }}</a></td>
+      <td>{{ v.invoice.date.strftime("%d/%m/%Y") }}</td>
+      <td>{{ v.invoice.due_date.strftime("%d/%m/%Y") }}</td>
+      <td>{{ v.invoice.customer_name }}</td>
+      <td class="num">$ {{ v.invoice.total | ars }}</td>
+      <td class="num">$ {{ v.balance | ars }}</td>
+      <td>{{ "Pendiente" if v.status == "open" else "Cobrada" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">No hay facturas para los filtros elegidos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% set qs = "customer_id=" ~ filters.customer_id ~ "&letter=" ~ filters.letter ~ "&from=" ~ filters.from ~ "&to=" ~ filters.to ~ "&status=" ~ filters.status %}
+<p class="no-print">{{ page.total }} factura(s).
+  {% if offset > 0 %}<a href="/invoices?{{ qs }}&offset={{ [offset - page_size, 0] | max }}">Anteriores</a>{% endif %}
+  {% if offset + page_size < page.total %}<a href="/invoices?{{ qs }}&offset={{ offset + page_size }}">Siguientes</a>{% endif %}
+</p>
+
+{% if pending_notes %}
+<section class="no-print">
+  <h2>Remitos sin facturar</h2>
+  <table>
+    <thead><tr><th>Remito</th><th>Fecha</th><th>Pedido</th><th>Cliente</th><th></th></tr></thead>
+    <tbody>
+      {% for note in pending_notes %}
+      <tr>
+        <td>{{ format_number(note.point_of_sale, note.number) }}</td>
+        <td>{{ note.date.strftime("%d/%m/%Y") }}</td>
+        <td><a href="/orders/{{ note.order_id }}">#{{ note.order.number }}</a></td>
+        <td>{{ note.order.customer.name }}</td>
+        <td>{% include "invoices/_invoice_button.html" %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

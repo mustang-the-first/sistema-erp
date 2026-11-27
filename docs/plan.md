@@ -321,8 +321,9 @@ todo.
 | GET / PATCH | `/customers/{id}` | | V, A |
 | GET / POST | `/suppliers` | | A |
 | GET / PATCH | `/suppliers/{id}` | | A |
-| GET | `/stock/movements` | `?product_id&from&to&kind` | todos |
+| GET | `/stock/movements` | `?product_id&from&to&kind` | A |
 | POST | `/stock/adjustments` | `{product_id, quantity (±), reason, note, date}` → movimiento + asiento | A |
+| GET | `/stock/adjustments` | `?product_id&from&to&reason` → `{items, total}` de `{movement, journal_entry_number}` | A |
 
 ### Ventas
 | Método | Ruta | Body / query | Roles |
@@ -361,9 +362,30 @@ todo.
 | GET | `/reports/receivables` | `?as_of` → saldo por cliente con antigüedad 0-30 / 31-60 / 61-90 / +90 días desde el vencimiento | C |
 
 ### Vistas web (HTMX)
-`/login`, `/products`, `/customers`, `/suppliers`, `/stock`, `/orders`, `/orders/{id}` (remitir y
-facturar desde ahí), `/invoices/{id}` (imprimible), `/receipts/new`, `/customers/{id}/statement`,
-`/accounting/accounts`, `/accounting/journal`, `/accounting/ledger`, `/reports/*`.
+
+Los permisos de cada vista web se definen acá, no en la navegación (que solo muestra enlaces).
+`tests/integration/foundation/test_web_roles.py` verifica esta tabla ruta por ruta, para cada
+rol, con requests reales. Sin sesión, toda vista (salvo `/login`) redirige a `/login`.
+
+| Vista | Métodos | Roles (+A) |
+|---|---|---|
+| `/login`, `/logout` | GET, POST / POST | público |
+| `/users`, `/users/{id}` | GET, POST, PATCH | A |
+| `/products` (listado) | GET | V, C |
+| `/products/{id}` (formulario de edición), alta y edición | GET, POST, PATCH | A |
+| `/customers`, `/customers/{id}` | GET, POST, PATCH | V |
+| `/suppliers`, `/suppliers/{id}` | GET, POST, PATCH | A |
+| `/stock`, `/stock/adjustments` | GET, POST | A |
+| `/orders`, `/orders/new`, `/orders/{id}` y acciones (confirmar, anular, remitir) | GET, POST, PATCH | V |
+| `/delivery-notes`, `/delivery-notes/{id}` | GET | V, C |
+| `/invoices`, `/invoices/{id}` (imprimible) | GET | V, C |
+| `/delivery-notes/{id}/invoice` (facturar) | POST | V |
+| `/receipts/new`, `/receipts/new/open-invoices`, `/receipts/{id}`, `/receipts` | GET, POST | V, C |
+| `/customers/{id}/statement` | GET | V, C |
+| `/accounting/accounts`, `/accounting/journal`, `/accounting/ledger` | GET, POST, PATCH | C |
+| `/reports/sales` | GET | V, C |
+| `/reports/low-stock` | GET | V |
+| `/reports/receivables` | GET | C |
 
 ### Infra
 `GET /health` → `{"status": "ok"}` (público).
@@ -461,6 +483,34 @@ de lanzar la Ola 2.
 
 ### Ola 2 — 7 agentes en paralelo (dependen solo de la Fundación)
 
+Reglas adicionales (aprobadas en el gate de la Ola 1):
+
+1. Cada agente usa su propia base de test: `ERP_TEST_AGENT=<a|b|c|d1|d2|e|f>`.
+2. **Nadie modifica** `app/models/`, `migrations/`, `app/core/`, `app/main.py`,
+   `app/repositories/base.py`, `app/services/{posting,stock_ledger,sequences,invoice_balance,chart_seed}.py`,
+   `tests/conftest.py`, `tests/factories/`, `templates/base.html`, `pyproject.toml`/`uv.lock`,
+   `Makefile` ni el CI. Si necesita un cambio, lo reporta y sigue con un stub.
+3. Cada agente termina con `make check` verde en su worktree y entrega un resumen: endpoints
+   implementados, tests y desvíos del contrato.
+4. Merge de a uno, con `make check` después de cada merge, en orden: A, B, C, D1, D2, E, F.
+
+Convenciones compartidas de la API (para que los 7 módulos sean consistentes):
+
+- Montos y cantidades se serializan como **string decimal** (`"1762.50"`, Pydantic v2 con
+  `Decimal`); fechas ISO `YYYY-MM-DD`.
+- Listados: `?limit=50&offset=0` (máx. 200) y respuesta `{"items": [...], "total": n}`.
+- Errores: **un solo formato** `{"detail", "code"}` para todo (401/403/404/422). Las reglas de
+  negocio usan su propio `code`; la validación de schemas usa `code: "validation_error"` con
+  `detail` = `campo: mensaje; ...`. En vistas web, los 404/422 de HTMX y de escrituras se
+  muestran en `#flash` (status 200, `HX-Retarget`) vía el handler compartido; el 403 conserva
+  su status. Ningún router web arma su propia respuesta de error.
+- Roles con `require_roles(...)` en el router o el endpoint; el admin siempre pasa.
+- `created_by` = usuario actual; fecha por defecto `app.core.clock.today()`; punto de venta
+  `get_settings().point_of_sale`.
+- **D2:** la factura A a un cliente Monotributo expone `legend` (texto de la Ley 27.618) en la
+  respuesta de la API y lo muestra en la vista imprimible; `null`/ausente en los demás casos.
+  Tiene su propio test en ambos lugares.
+
 Patrón de archivos por módulo `<m>`: `routers/api/<m>.py`, `routers/web/<m>.py`,
 `services/<m>.py`, `repositories/<m>.py`, `schemas/<m>.py`, `templates/<m>/`,
 `tests/unit/<m>/`, `tests/integration/<m>/`.
@@ -516,3 +566,16 @@ Orden: **Ola 0 → Ola 1 → gate → Ola 2 (7 en paralelo) → merge → Ola 3 
 10. Los locks se toman ordenados por `product_id`.
 11. `invoice_balance` tiene una única implementación, en la Fundación.
 12. En el e2e, Mercaderías se valida contra la suma de los movimientos valuados.
+
+### Desvíos aceptados (revisión de la Ola 2)
+
+Cambios respecto del contrato original, revisados y aceptados:
+
+| Módulo | Desvío | Motivo |
+|---|---|---|
+| B · Stock | `GET /stock/adjustments` (listado de ajustes con el número de asiento), no estaba en el contrato | Permite ver cada ajuste junto a su asiento sin cruzar a mano movimientos y diario |
+| B · Catálogo | El SKU es único **sin distinguir mayúsculas** (`abc-1` = `ABC-1`) | Evita productos duplicados que solo difieren en mayúsculas |
+| B · Catálogo | `payment_terms_days` (plazo de pago) va de **0 a 365** días; fuera de rango → 422 `invalid_payment_terms` | Un plazo negativo o mayor a un año es un error de carga |
+| Stock | Todo `/stock` (API y web) es **solo admin**, incluidas las lecturas | Decisión posterior a la Ola 2 (antes `GET /stock/movements` era para todos) |
+| B · Catálogo | La vista web `/products/{id}` es el formulario de edición: **solo admin**. V y C ven los productos en el listado | No se agrega una vista de solo lectura que no estaba en el alcance |
+

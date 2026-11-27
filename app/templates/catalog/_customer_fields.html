@@ -1,0 +1,19 @@
+<div class="grid">
+  <label>Razón social / nombre <input name="name" value="{{ customer.name if customer else '' }}" required maxlength="200"></label>
+  <label>Condición frente al IVA
+    <select name="tax_condition">
+      {% for cond, label in tax_condition_labels.items() %}
+      <option value="{{ cond.value }}"{% if customer and customer.tax_condition == cond %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>CUIT <input name="cuit" value="{{ (customer.cuit or '') if customer else '' }}" placeholder="20-12345678-6" maxlength="13">
+    <small>Obligatorio salvo Consumidor Final.</small></label>
+</div>
+<label>Domicilio <input name="address" value="{{ (customer.address or '') if customer else '' }}" maxlength="300"></label>
+<div class="grid">
+  <label>Email <input name="email" type="email" value="{{ (customer.email or '') if customer else '' }}" maxlength="255"></label>
+  <label>Teléfono <input name="phone" value="{{ (customer.phone or '') if customer else '' }}" maxlength="50"></label>
+  <label>Plazo de pago (días) <input name="payment_terms_days" type="number" min="0" max="365" step="1"
+         value="{{ customer.payment_terms_days if customer else 0 }}" required></label>
+</div>

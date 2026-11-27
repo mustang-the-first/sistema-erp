@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Productos · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Productos</h1>
+<form id="products-filter" role="search" hx-get="/products" hx-vals='{"partial": "true"}'
+      hx-target="#products-table" hx-trigger="submit, change">
+  <input type="search" name="q" value="{{ q }}" placeholder="Buscar por SKU o nombre" aria-label="Buscar">
+  {% include "catalog/_active_filter.html" %}
+  <button type="submit">Buscar</button>
+</form>
+<div id="products-table" hx-get="/products" hx-vals='{"partial": "true"}' hx-include="#products-filter"
+     hx-trigger="products-changed from:body">
+  {% include "catalog/_products_table.html" %}
+</div>
+
+{% if user and user.role == "admin" %}
+<details>
+  <summary role="button" class="outline">Nuevo producto</summary>
+  <form hx-post="/products" hx-target="#flash">
+    <div class="grid">
+      <label>SKU <input name="sku" required maxlength="50"></label>
+      <label>Nombre <input name="name" required maxlength="200"></label>
+      <label>Unidad <input name="unit" value="unit" maxlength="20"></label>
+    </div>
+    <div class="grid">
+      <label>Precio neto <input name="unit_price" type="number" step="0.01" min="0" required></label>
+      <label>IVA
+        <select name="vat_rate">
+          {% for rate, label in vat_labels.items() %}<option value="{{ rate.value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Costo estándar <input name="unit_cost" type="number" step="0.01" min="0" required></label>
+      <label>Stock mínimo <input name="min_stock" type="number" step="0.001" min="0" value="0"></label>
+    </div>
+    <label>Proveedor preferido
+      <select name="supplier_id">
+        <option value="">— Ninguno —</option>
+        {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <small>El stock se carga con un ajuste de "carga inicial" en <a href="/stock">Stock</a>.</small>
+    <button type="submit">Crear producto</button>
+  </form>
+</details>
+{% endif %}
+{% endblock %}

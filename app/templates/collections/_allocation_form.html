@@ -1,0 +1,49 @@
+{% if page is none %}
+<p>Elegí un cliente para ver sus facturas abiertas.</p>
+{% elif not page.items %}
+<p>{{ page.customer.name }} no tiene facturas con saldo pendiente.
+  <a href="/customers/{{ page.customer.id }}/statement">Ver cuenta corriente</a></p>
+{% else %}
+<form id="receipt-form" hx-post="/receipts">
+  <input type="hidden" name="customer_id" value="{{ page.customer.id }}">
+  <div class="grid">
+    <label>Fecha <input type="date" name="date" value="{{ today.isoformat() }}" required></label>
+    <label>Medio de pago
+      <select name="method">
+        {% for value, label in methods.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Referencia <input type="text" name="reference" maxlength="100"></label>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Factura</th><th>Fecha</th><th>Vencimiento</th><th class="num">Días vencida</th>
+        <th class="num">Total</th><th class="num">Saldo</th><th class="num">A cobrar</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in page.items %}
+      <tr>
+        <td>{{ item.document_number }}</td>
+        <td>{{ item.invoice.date.strftime("%d/%m/%Y") }}</td>
+        <td>{{ item.invoice.due_date.strftime("%d/%m/%Y") }}</td>
+        <td class="num">{{ item.days_overdue }}</td>
+        <td class="num">{{ item.invoice.total | ars }}</td>
+        <td class="num">{{ item.balance | ars }}</td>
+        <td class="num">
+          <input type="number" name="amount_{{ item.invoice.id }}" step="0.01" min="0.01"
+                 max="{{ item.balance }}" placeholder="{{ item.balance }}"
+                 aria-label="Monto a cobrar de {{ item.document_number }}">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th colspan="5">Saldo total</th><th class="num">{{ page.total_balance | ars }}</th><th></th></tr>
+    </tfoot>
+  </table>
+  <button type="submit">Registrar cobranza</button>
+  <a href="/customers/{{ page.customer.id }}/statement">Ver cuenta corriente</a>
+</form>
+{% endif %}

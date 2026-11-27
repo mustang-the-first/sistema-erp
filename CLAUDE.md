@@ -59,6 +59,23 @@ Requisitos: [uv](https://docs.astral.sh/uv/) y Docker. Python 3.12 (lo instala u
 
 Variables en `.env` (ver `.env.example`), prefijo `ERP_`. Los tests usan `ERP_TEST_DATABASE_URL`.
 
+## Entorno de ejecución (sesiones cloud / agentes)
+
+- **El contenedor puede reiniciarse en cualquier momento** y matar todos los procesos en
+  background (dockerd, Postgres, servidores). Antes de asumir que algo está caído por tu código,
+  verificá que el proceso exista.
+- **Nunca** corras `dockerd`, `uvicorn` ni otro proceso largo en primer plano. Lanzalo con
+  `nohup <cmd> > /tmp/<nombre>.log 2>&1 &` y esperá con un bucle acotado:
+  `timeout 60 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done'`.
+- Si Docker no responde en 60 s, no lo uses: instalá PostgreSQL 17 por apt, creá el usuario
+  `erp` y las bases `erp` y `erp_test`, y apuntá `ERP_DATABASE_URL` / `ERP_TEST_DATABASE_URL`
+  ahí. El build de la imagen lo verifica el job `docker` del CI.
+- **Todo comando que pueda colgarse va con `timeout`**: `timeout 600 make check`,
+  `timeout 300 uv run pytest ...`, `timeout 20 psql ...`. Nunca reintentes igual un comando que
+  colgó: diagnosticá primero (`pg_stat_activity`, `pg_locks`, `pg_blocking_pids`).
+- **Una base de test por agente:** `ERP_TEST_AGENT=b` hace que los tests usen `erp_test_b` (el
+  conftest la crea si falta). Agentes en paralelo nunca comparten base de test.
+
 ## Tests
 
 - `tests/unit/<module>/` — lógica pura (cálculo de IVA, armado de asientos, letra de factura),
@@ -67,7 +84,13 @@ Variables en `.env` (ver `.env.example`), prefijo `ERP_`. Los tests usan `ERP_TE
   dentro de una transacción con `join_transaction_mode="create_savepoint"` y rollback al final.
   Marca `@pytest.mark.integration`.
 - Tests de concurrencia (stock y numeración) — conexiones separadas, limpieza por `TRUNCATE`.
-  Marca `@pytest.mark.concurrency`.
+  Marca `@pytest.mark.concurrency`. Usan `committed_factory` (engine propio, nunca el de
+  savepoints; no se combina con `db`) y el helper `run_concurrently` (Session propia por thread,
+  cerrada en `finally`; `join` con timeout).
+- **Un cuelgue es un fallo, nunca una espera:** pytest-timeout 30 s (60 s para `concurrency`), y
+  las conexiones de test llevan `lock_timeout=5s`, `statement_timeout=15s` e
+  `idle_in_transaction_session_timeout=10s`. No subas estos límites para que un test pase.
+- Repetir para detectar flakiness: `timeout 300 uv run pytest -m concurrency --count=10 -x`.
 - `tests/e2e/` — flujo order-to-cash completo con chequeos cruzados. Marca `@pytest.mark.e2e`.
 - Datos de prueba con `tests/factories/`; clientes HTTP por rol con el fixture `client_as(role)`.
 - Nombres: `test_<qué>_<condición>_<resultado>`. Estructura Arrange / Act / Assert.

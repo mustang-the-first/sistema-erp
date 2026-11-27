@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ product.sku }} · Productos · Sistema ERP{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ul><li><a href="/products">Productos</a></li><li>{{ product.sku }}</li></ul></nav>
+<h1>{{ product.name }}</h1>
+<p>Stock actual: <strong>{{ product.stock_qty }}</strong> {{ product.unit }} ·
+  <a href="/stock?product_id={{ product.id }}">ver movimientos</a></p>
+<form hx-patch="/products/{{ product.id }}" hx-target="#flash">
+  <div class="grid">
+    <label>SKU <input name="sku" value="{{ product.sku }}" required maxlength="50"></label>
+    <label>Nombre <input name="name" value="{{ product.name }}" required maxlength="200"></label>
+    <label>Unidad <input name="unit" value="{{ product.unit }}" required maxlength="20"></label>
+  </div>
+  <div class="grid">
+    <label>Precio neto <input name="unit_price" type="number" step="0.01" min="0" value="{{ product.unit_price }}" required></label>
+    <label>IVA
+      <select name="vat_rate">
+        {% for rate, label in vat_labels.items() %}
+        <option value="{{ rate.value }}"{% if rate == product.vat_rate %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Costo estándar <input name="unit_cost" type="number" step="0.01" min="0" value="{{ product.unit_cost }}" required></label>
+    <label>Stock mínimo <input name="min_stock" type="number" step="0.001" min="0" value="{{ product.min_stock }}" required></label>
+  </div>
+  <label>Proveedor preferido
+    <select name="supplier_id">
+      <option value="">— Ninguno —</option>
+      {% for s in suppliers %}
+      <option value="{{ s.id }}"{% if s.id == product.supplier_id %} selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+      {% if product.supplier and not product.supplier.is_active %}
+      <option value="{{ product.supplier.id }}" selected>{{ product.supplier.name }} (inactivo)</option>
+      {% endif %}
+    </select>
+  </label>
+  <label><input type="checkbox" role="switch" name="is_active"{% if product.is_active %} checked{% endif %}> Activo</label>
+  <small>Cambiar el costo no revaloriza el stock existente.</small>
+  <button type="submit">Guardar</button>
+</form>
+{% endblock %}

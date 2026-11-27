@@ -1,0 +1,38 @@
+name: Demo reset
+
+# Wipes the public demo database and loads the demo dataset again, every day at
+# 06:00 UTC (03:00 Argentina). Disabled until the repository variable DEMO_RESET_ENABLED is
+# "true" and these secrets exist: DEMO_DATABASE_URL, DEMO_SECRET_KEY, DEMO_PASSWORD.
+# Note: GitHub runs scheduled workflows only from the default branch.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: demo-reset
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    if: vars.DEMO_RESET_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ERP_ENV: production
+      ERP_DEMO_MODE: "true"
+      ERP_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+      ERP_SECRET_KEY: ${{ secrets.DEMO_SECRET_KEY }}
+      ERP_DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --no-dev
+      - name: Migrations (schema must be current before seeding)
+        run: timeout 120 uv run alembic upgrade head
+      - name: Reset demo data
+        run: timeout 300 uv run python -m scripts.reset_demo

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "orders/_macros.html" import doc_number %}
+{% block title %}Remitos · Sistema ERP{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Remitos</h1>
+  <p>{{ total }} remito{{ "s" if total != 1 }}{% if order_id %} del pedido seleccionado{% endif %}</p>
+</hgroup>
+
+<nav>
+  <ul>
+    <li><a href="/delivery-notes"{% if invoiced is none %} aria-current="page"{% endif %}>Todos</a></li>
+    <li><a href="/delivery-notes?invoiced=false"{% if invoiced is false %} aria-current="page"{% endif %}>Sin facturar</a></li>
+    <li><a href="/delivery-notes?invoiced=true"{% if invoiced is true %} aria-current="page"{% endif %}>Facturados</a></li>
+  </ul>
+</nav>
+
+<table>
+  <thead>
+    <tr><th>Remito</th><th>Fecha</th><th>Pedido</th><th>Cliente</th><th>Facturado</th></tr>
+  </thead>
+  <tbody>
+    {% for note in notes %}
+    <tr>
+      <td><a href="/delivery-notes/{{ note.id }}">{{ doc_number(note.point_of_sale, note.number) }}</a></td>
+      <td>{{ note.date.strftime("%d/%m/%Y") }}</td>
+      <td>{{ note.order.number }}</td>
+      <td>{{ note.order.customer.name }}</td>
+      <td>{{ "Sí" if note.invoice is not none else "No" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">No hay remitos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if pages > 1 %}
+{% set filters %}{% if order_id %}&order_id={{ order_id }}{% endif %}{% if invoiced is not none %}&invoiced={{ invoiced | lower }}{% endif %}{% endset %}
+<nav>
+  <ul>
+    {% if page > 1 %}<li><a href="?page={{ page - 1 }}{{ filters }}">Anterior</a></li>{% endif %}
+    <li>Página {{ page }} de {{ pages }}</li>
+    {% if page < pages %}<li><a href="?page={{ page + 1 }}{{ filters }}">Siguiente</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

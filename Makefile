@@ -22,12 +22,22 @@ db:
 migrate:
 	uv run alembic upgrade head
 
+migrate-check:
+	uv run alembic upgrade head
+	uv run alembic check
+
 run:
 	uv run uvicorn app.main:app --reload
+
+seed-demo:
+	uv run python -m scripts.seed_demo
+
+demo-reset:
+	ERP_DEMO_MODE=true uv run python -m scripts.reset_demo
 
 up:
 	docker compose up --build
 
 check: lint test
 
-.PHONY: install lint format test test-unit db migrate run up check
+.PHONY: install lint format test test-unit db migrate migrate-check run seed-demo demo-reset up check

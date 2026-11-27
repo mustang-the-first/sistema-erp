@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Editar usuario · Sistema ERP{% endblock %}
+{% block content %}
+<p><a href="/users">&larr; Usuarios</a></p>
+<h1>{{ target.email }}</h1>
+{% include "users/_edit_form.html" %}
+{% endblock %}

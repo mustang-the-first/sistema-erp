@@ -11,3 +11,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Agent worktrees (Wave 2) and local Claude Code state
+.claude/worktrees/
+.claude/settings.local.json

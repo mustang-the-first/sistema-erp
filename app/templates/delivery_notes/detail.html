@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "orders/_macros.html" import doc_number, qty %}
+{% block title %}Remito {{ doc_number(note.point_of_sale, note.number) }} · Sistema ERP{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Remito {{ doc_number(note.point_of_sale, note.number) }}</h1>
+  <p>{{ note.date.strftime("%d/%m/%Y") }} · {{ note.order.customer.name }}</p>
+</hgroup>
+
+<dl>
+  <dt>Pedido</dt>
+  <dd>
+    {% if user and user.role.value in ("admin", "seller") %}
+    <a href="/orders/{{ note.order_id }}">{{ note.order.number }}</a>
+    {% else %}{{ note.order.number }}{% endif %}
+  </dd>
+  <dt>Cliente</dt>
+  <dd>{{ note.order.customer.name }}{% if note.order.customer.cuit %} · CUIT {{ note.order.customer.cuit }}{% endif %}</dd>
+  {% if note.order.customer.address %}<dt>Domicilio</dt><dd>{{ note.order.customer.address }}</dd>{% endif %}
+  <dt>Facturado</dt>
+  <dd>{{ "Sí" if note.invoice is not none else "No" }}</dd>
+</dl>
+
+<table>
+  <thead><tr><th>SKU</th><th>Producto</th><th>Unidad</th><th class="num">Cantidad</th></tr></thead>
+  <tbody>
+    {% for line in note.lines %}
+    <tr>
+      <td>{{ line.product.sku }}</td>
+      <td>{{ line.product.name }}</td>
+      <td>{{ line.product.unit }}</td>
+      <td class="num">{{ qty(line.quantity) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="no-print" role="group">
+  <button class="outline" onclick="window.print()">Imprimir</button>
+  <a href="/delivery-notes" role="button" class="outline">Volver</a>
+</div>
+{% endblock %}

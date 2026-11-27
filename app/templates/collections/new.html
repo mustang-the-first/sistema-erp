@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Nueva cobranza · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Nueva cobranza</h1>
+<label for="customer_id">Cliente
+  <select id="customer_id" name="customer_id"
+          hx-get="/receipts/new/open-invoices" hx-target="#allocation-form" hx-trigger="change">
+    <option value="">Elegí un cliente…</option>
+    {% for c in customers %}
+    <option value="{{ c.id }}"{% if c.id == selected_customer_id %} selected{% endif %}>{{ c.name }}{% if c.cuit %} ({{ c.cuit }}){% endif %}</option>
+    {% endfor %}
+  </select>
+</label>
+<div id="allocation-form">
+  {% include "collections/_allocation_form.html" %}
+</div>
+{% endblock %}

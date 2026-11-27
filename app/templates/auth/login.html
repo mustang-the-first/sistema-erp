@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Ingresar · Sistema ERP{% endblock %}
+{% block content %}
+<article style="max-width: 28rem; margin: 2rem auto;">
+  <header><h2>Ingresar</h2></header>
+  {% if error %}
+  <div class="flash flash-error" role="alert">Email o contraseña incorrectos.</div>
+  {% endif %}
+  <form method="post" action="/login">
+    <label>Email
+      <input type="email" name="email" value="{{ email }}" autocomplete="username" required autofocus>
+    </label>
+    <label>Contraseña
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Ingresar</button>
+  </form>
+  {% if demo_mode() %}
+  <footer data-testid="demo-accounts">
+    <small>Cuentas de la demo (contraseña <code>{{ demo_password() }}</code>):</small>
+    <ul>
+      {% for email, _, role in demo_users %}
+      <li><small><code>{{ email }}</code> · {{ {"admin": "administración", "seller": "ventas", "accountant": "contabilidad"}[role.value] }}</small></li>
+      {% endfor %}
+    </ul>
+  </footer>
+  {% endif %}
+</article>
+{% endblock %}

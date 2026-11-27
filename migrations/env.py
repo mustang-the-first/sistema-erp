@@ -4,17 +4,18 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
+from app.models import Base
 
 config = context.config
-if config.config_file_name is not None:
+# Tests pass configure_logger=False so Alembic does not reset pytest's logging.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 # An explicit -x / set_main_option URL wins (tests use it); otherwise read settings.
 if not config.get_main_option("sqlalchemy.url"):
     config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
-# Wave 1 (Foundation) replaces this with: from app.models import Base; Base.metadata
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Factura {{ view.invoice.letter }} {{ view.formatted_number }} · Sistema ERP{% endblock %}
+{% block content %}
+{% set inv = view.invoice %}
+{% macro qty(value) %}{{ "{:f}".format(value.normalize()) | replace(".", ",") }}{% endmacro %}
+<style>
+  .invoice-header { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: start; border: 1px solid var(--pico-muted-border-color); padding: 1rem; }
+  .letter-box { border: 2px solid currentColor; width: 4.5rem; text-align: center; padding: .25rem; }
+  .letter-box strong { font-size: 2.5rem; line-height: 1; display: block; }
+  .letter-box small { font-size: .65rem; }
+  .invoice-meta { text-align: right; }
+  .invoice-customer { border: 1px solid var(--pico-muted-border-color); border-top: 0; padding: 1rem; margin-bottom: 1rem; }
+  .invoice-totals { margin-left: auto; max-width: 24rem; }
+  .invoice-legend { border: 1px solid currentColor; padding: .75rem; font-size: .85rem; }
+  @media print {
+    main.container { max-width: none; padding: 0; }
+    .invoice-header, .invoice-customer { break-inside: avoid; }
+  }
+</style>
+
+<p class="no-print">
+  <a href="/invoices">&larr; Volver a facturas</a>
+  · <a href="#" onclick="window.print(); return false;">Imprimir</a>
+  · Estado: <strong>{{ "Pendiente" if view.status == "open" else "Cobrada" }}</strong>
+  · Saldo: $ {{ view.balance | ars }}
+</p>
+
+<article class="invoice">
+  <div class="invoice-header">
+    <div>
+      <strong>{{ issuer.name }}</strong><br>
+      {{ issuer.address }}<br>
+      {{ issuer.tax_condition }}
+    </div>
+    <div class="letter-box" data-letter="{{ inv.letter }}">
+      <strong>{{ inv.letter }}</strong>
+      <small>COD. {{ "01" if inv.letter == "A" else "06" }}</small>
+    </div>
+    <div class="invoice-meta">
+      <strong>FACTURA</strong><br>
+      N° {{ view.formatted_number }}<br>
+      Fecha de emisión: {{ inv.date.strftime("%d/%m/%Y") }}<br>
+      CUIT: {{ issuer.cuit }}<br>
+      Inicio de actividades: {{ issuer.start_date }}
+    </div>
+  </div>
+
+  <div class="invoice-customer">
+    <strong>Cliente:</strong> {{ inv.customer_name }}<br>
+    <strong>CUIT:</strong> {{ inv.customer_cuit or "—" }}<br>
+    <strong>Condición frente al IVA:</strong> {{ tax_labels[inv.customer_tax_condition.value] }}<br>
+    <strong>Vencimiento:</strong> {{ inv.due_date.strftime("%d/%m/%Y") }}
+  </div>
+
+  {% if inv.letter == "A" %}
+  <table>
+    <thead>
+      <tr><th>Descripción</th><th class="num">Cantidad</th><th class="num">Precio unit.</th><th class="num">IVA %</th><th class="num">Subtotal</th></tr>
+    </thead>
+    <tbody>
+      {% for line in inv.lines %}
+      <tr>
+        <td>{{ line.description }}</td>
+        <td class="num">{{ qty(line.quantity) }}</td>
+        <td class="num">{{ line.unit_price | ars }}</td>
+        <td class="num">{{ line.vat_rate.value | replace(".", ",") }}</td>
+        <td class="num">{{ line.net_amount | ars }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <table class="invoice-totals">
+    <tbody>
+      <tr><th>Importe neto gravado</th><td class="num">$ {{ inv.net_total | ars }}</td></tr>
+      <tr><th>IVA 21%</th><td class="num">$ {{ inv.vat_21 | ars }}</td></tr>
+      <tr><th>IVA 10,5%</th><td class="num">$ {{ inv.vat_10_5 | ars }}</td></tr>
+      <tr><th>Importe total</th><td class="num"><strong>$ {{ inv.total | ars }}</strong></td></tr>
+    </tbody>
+  </table>
+  {% else %}
+  <table>
+    <thead>
+      <tr><th>Descripción</th><th class="num">Cantidad</th><th class="num">Precio unit. (IVA incl.)</th><th class="num">Subtotal</th></tr>
+    </thead>
+    <tbody>
+      {% for line in inv.lines %}
+      <tr>
+        <td>{{ line.description }}</td>
+        <td class="num">{{ qty(line.quantity) }}</td>
+        <td class="num">{{ (line.unit_price * (1 + line.vat_rate.fraction)) | ars }}</td>
+        <td class="num">{{ (line.net_amount + line.vat_amount) | ars }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <table class="invoice-totals">
+    <tbody>
+      <tr><th>Importe total</th><td class="num"><strong>$ {{ inv.total | ars }}</strong></td></tr>
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if view.legend %}
+  <p class="invoice-legend" data-testid="legend">{{ view.legend }}</p>
+  {% endif %}
+</article>
+{% endblock %}

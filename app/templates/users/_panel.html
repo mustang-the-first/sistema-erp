@@ -1,0 +1,60 @@
+{# Swapped as a whole after creating a user (hx-post="/users"). #}
+<section id="users-panel">
+  {% if message %}<article class="flash flash-success" role="status">{{ message }}</article>{% endif %}
+  {% if error %}<article class="flash flash-error" role="alert">{{ error }}</article>{% endif %}
+
+  <details{% if error %} open{% endif %}>
+    <summary role="button" class="secondary">Nuevo usuario</summary>
+    <form hx-post="/users" hx-target="#users-panel" hx-swap="outerHTML">
+      <div class="grid">
+        <label>Email
+          <input type="email" name="email" value="{{ form.email }}" required>
+        </label>
+        <label>Nombre completo
+          <input type="text" name="full_name" value="{{ form.full_name }}" required>
+        </label>
+      </div>
+      <div class="grid">
+        <label>Rol
+          <select name="role">
+            {% for value, label in role_labels.items() %}
+            <option value="{{ value }}"{% if value == form.role %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Contraseña
+          <input type="password" name="password" minlength="8" autocomplete="new-password" required>
+        </label>
+      </div>
+      <button type="submit">Crear usuario</button>
+    </form>
+  </details>
+
+  <table>
+    <thead>
+      <tr><th>Email</th><th>Nombre</th><th>Rol</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.email }}</td>
+        <td>{{ u.full_name }}</td>
+        <td>{{ role_labels[u.role] }}</td>
+        <td>{{ "Activo" if u.is_active else "Inactivo" }}</td>
+        <td><a href="/users/{{ u.id }}">Editar</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No hay usuarios.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if total > page_size %}
+  <nav>
+    <ul>
+      {% if offset > 0 %}<li><a href="/users?offset={{ [offset - page_size, 0] | max }}">Anterior</a></li>{% endif %}
+      {% if offset + page_size < total %}<li><a href="/users?offset={{ offset + page_size }}">Siguiente</a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</section>

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }} · Clientes · Sistema ERP{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ul><li><a href="/customers">Clientes</a></li><li>{{ customer.name }}</li></ul></nav>
+<h1>{{ customer.name }}</h1>
+<p><a href="/customers/{{ customer.id }}/statement">Ver cuenta corriente</a></p>
+<form hx-patch="/customers/{{ customer.id }}" hx-target="#flash">
+  {% include "catalog/_customer_fields.html" %}
+  <label><input type="checkbox" role="switch" name="is_active"{% if customer.is_active %} checked{% endif %}> Activo</label>
+  <button type="submit">Guardar</button>
+</form>
+{% endblock %}

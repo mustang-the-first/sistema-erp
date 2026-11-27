@@ -1,0 +1,25 @@
+<table class="striped">
+  <thead>
+    <tr>
+      <th>Fecha</th><th>Producto</th><th>Tipo</th><th>Motivo</th><th class="num">Cantidad</th>
+      <th class="num">Costo unit.</th><th class="num">Valor</th><th>Nota</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in movements %}
+    <tr>
+      <td>{{ m.date.strftime("%d/%m/%Y") }}</td>
+      <td>{{ m.product.sku }} — {{ m.product.name }}</td>
+      <td>{{ kind_labels[m.kind] }}</td>
+      <td>{{ reason_labels[m.reason] if m.reason else "" }}</td>
+      <td class="num">{{ m.quantity }}</td>
+      <td class="num">{{ m.unit_cost | ars }}</td>
+      <td class="num">{{ (m.quantity * m.unit_cost) | ars }}</td>
+      <td>{{ m.note or "" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8">No hay movimientos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<small>{{ movements | length }} de {{ total }} movimientos</small>

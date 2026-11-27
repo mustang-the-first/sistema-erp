@@ -1,0 +1,28 @@
+{# Swapped in place after saving (hx-patch="/users/{id}"). #}
+<form id="user-edit" hx-patch="/users/{{ target.id }}" hx-target="this" hx-swap="outerHTML">
+  {% if message %}<article class="flash flash-success" role="status">{{ message }}</article>{% endif %}
+  {% if error %}<article class="flash flash-error" role="alert">{{ error }}</article>{% endif %}
+  <label>Nombre completo
+    <input type="text" name="full_name" value="{{ target.full_name }}" required>
+  </label>
+  <div class="grid">
+    <label>Rol
+      <select name="role">
+        {% for value, label in role_labels.items() %}
+        <option value="{{ value }}"{% if value == target.role %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Estado
+      <select name="is_active">
+        <option value="true"{% if target.is_active %} selected{% endif %}>Activo</option>
+        <option value="false"{% if not target.is_active %} selected{% endif %}>Inactivo</option>
+      </select>
+    </label>
+  </div>
+  <label>Nueva contraseña
+    <input type="password" name="password" minlength="8" autocomplete="new-password"
+           placeholder="Dejar vacío para no cambiarla">
+  </label>
+  <button type="submit">Guardar</button>
+</form>

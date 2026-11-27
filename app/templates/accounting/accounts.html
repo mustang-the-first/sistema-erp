@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Plan de cuentas · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Plan de cuentas</h1>
+
+<details>
+  <summary role="button" class="outline">Nueva cuenta</summary>
+  <form id="account-create" hx-post="/accounting/accounts" hx-target="#accounts-tree" hx-swap="outerHTML">
+    <div class="grid">
+      <label>Rubro padre
+        <select name="parent_id" required>
+          <option value="">Elegí un rubro…</option>
+          {% for parent in parents %}
+          <option value="{{ parent.id }}">{{ parent.code }} · {{ parent.name }} ({{ type_labels[parent.type] }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Código
+        <input name="code" required placeholder="1.1.1.03" pattern="\d{1,4}(\.\d{1,4})*">
+      </label>
+      <label>Nombre
+        <input name="name" required maxlength="200">
+      </label>
+    </div>
+    <label><input type="checkbox" name="is_postable" value="true" checked> Imputable (desmarcar para crear un rubro)</label>
+    <p><small>El tipo se toma del rubro padre. El código es el del padre seguido de un punto y un número.</small></p>
+    <button type="submit">Crear cuenta</button>
+  </form>
+</details>
+
+{% include "accounting/_tree.html" %}
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Libro mayor · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Libro mayor</h1>
+
+<form hx-get="/accounting/ledger" hx-target="#ledger" hx-select="#ledger" hx-swap="outerHTML" hx-push-url="true">
+  <div class="grid">
+    <label>Cuenta
+      <select name="account_id" required>
+        <option value="">Elegí una cuenta…</option>
+        {% for a in accounts %}
+        <option value="{{ a.id }}"{% if account_id == a.id %} selected{% endif %}>{{ a.code }} · {{ a.name }}{% if not a.is_postable %} (rubro){% endif %}{% if not a.is_active %} (inactiva){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Desde <input type="date" name="from" value="{{ date_from }}"></label>
+    <label>Hasta <input type="date" name="to" value="{{ date_to }}"></label>
+  </div>
+  <button type="submit">Ver mayor</button>
+</form>
+
+<section id="ledger">
+  {% if error %}<article class="flash flash-error" role="alert">{{ error }}</article>{% endif %}
+  {% if ledger %}
+  {% set wide = ledger.includes_descendants %}
+  <h2>{{ ledger.account.code }} · {{ ledger.account.name }}</h2>
+  {% if wide %}<p><small>Rubro: incluye los movimientos de todas sus subcuentas.</small></p>{% endif %}
+  <table class="striped">
+    <thead>
+      <tr><th>Fecha</th><th>Asiento</th><th>Descripción</th>{% if wide %}<th>Cuenta</th>{% endif %}<th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="{{ 6 if wide else 5 }}"><em>Saldo inicial</em></td>
+        <td class="num">{{ ledger.opening_balance | ars }}</td>
+      </tr>
+      {% for m in ledger.movements %}
+      <tr>
+        <td>{{ m.date.strftime("%d/%m/%Y") }}</td>
+        <td>{{ m.entry_number }}</td>
+        <td>{{ m.description }}</td>
+        {% if wide %}<td>{{ m.account_code }}</td>{% endif %}
+        <td class="num">{% if m.debit > 0 %}{{ m.debit | ars }}{% endif %}</td>
+        <td class="num">{% if m.credit > 0 %}{{ m.credit | ars }}{% endif %}</td>
+        <td class="num">{{ m.balance | ars }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th colspan="{{ 4 if wide else 3 }}">Totales del período · Saldo final{% if ledger.nature %} ({{ ledger.nature }}){% endif %}</th>
+        <th class="num">{{ ledger.total_debit | ars }}</th>
+        <th class="num">{{ ledger.total_credit | ars }}</th>
+        <th class="num">{{ ledger.closing_balance | ars }}</th>
+      </tr>
+    </tfoot>
+  </table>
+  {% elif not error %}
+  <p>Elegí una cuenta para ver su mayor.</p>
+  {% endif %}
+</section>
+{% endblock %}

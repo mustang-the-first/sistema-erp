@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% set number = "%04d-%08d" | format(receipt.point_of_sale, receipt.number) %}
+{% block title %}Cobranza {{ number }} · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Cobranza {{ number }}</h1>
+<dl>
+  <dt>Cliente</dt><dd><a href="/customers/{{ receipt.customer_id }}/statement">{{ receipt.customer.name }}</a></dd>
+  <dt>Fecha</dt><dd>{{ receipt.date.strftime("%d/%m/%Y") }}</dd>
+  <dt>Medio de pago</dt><dd>{{ methods[receipt.method] }}</dd>
+  {% if receipt.reference %}<dt>Referencia</dt><dd>{{ receipt.reference }}</dd>{% endif %}
+  <dt>Importe</dt><dd>$ {{ receipt.amount | ars }}</dd>
+</dl>
+<h2>Facturas canceladas</h2>
+<table>
+  <thead><tr><th>Factura</th><th>Fecha</th><th class="num">Total factura</th><th class="num">Imputado</th></tr></thead>
+  <tbody>
+    {% for a in receipt.allocations %}
+    <tr>
+      <td><a href="/invoices/{{ a.invoice_id }}">{{ a.invoice.letter }} {{ "%04d-%08d" | format(a.invoice.point_of_sale, a.invoice.number) }}</a></td>
+      <td>{{ a.invoice.date.strftime("%d/%m/%Y") }}</td>
+      <td class="num">{{ a.invoice.total | ars }}</td>
+      <td class="num">{{ a.amount | ars }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot><tr><th colspan="3">Total</th><th class="num">{{ receipt.amount | ars }}</th></tr></tfoot>
+</table>
+<p class="no-print"><a href="/receipts/new">Nueva cobranza</a></p>
+{% endblock %}

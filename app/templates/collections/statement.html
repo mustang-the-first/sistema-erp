@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Cuenta corriente · {{ statement.customer.name }} · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Cuenta corriente: {{ statement.customer.name }}</h1>
+<form method="get" class="grid no-print">
+  <label>Desde <input type="date" name="from" value="{{ statement.date_from.isoformat() if statement.date_from else '' }}"></label>
+  <label>Hasta <input type="date" name="to" value="{{ statement.date_to.isoformat() if statement.date_to else '' }}"></label>
+  <button type="submit">Filtrar</button>
+</form>
+<table>
+  <thead>
+    <tr><th>Fecha</th><th>Comprobante</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr>
+  </thead>
+  <tbody>
+    <tr><td colspan="4">Saldo inicial</td><td class="num">{{ statement.opening_balance | ars }}</td></tr>
+    {% for m in statement.movements %}
+    <tr>
+      <td>{{ m.date.strftime("%d/%m/%Y") }}</td>
+      <td><a href="/{{ 'receipts' if m.kind == 'receipt' else 'invoices' }}/{{ m.document_id }}">{{ m.document_number }}</a></td>
+      <td class="num">{% if m.debit %}{{ m.debit | ars }}{% endif %}</td>
+      <td class="num">{% if m.credit %}{{ m.credit | ars }}{% endif %}</td>
+      <td class="num">{{ m.balance | ars }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Sin movimientos en el período.</td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th colspan="2">Totales / saldo final</th>
+      <th class="num">{{ statement.total_debit | ars }}</th>
+      <th class="num">{{ statement.total_credit | ars }}</th>
+      <th class="num">{{ statement.closing_balance | ars }}</th>
+    </tr>
+  </tfoot>
+</table>
+<p class="no-print"><a href="/receipts/new?customer_id={{ statement.customer.id }}">Registrar cobranza</a></p>
+{% endblock %}

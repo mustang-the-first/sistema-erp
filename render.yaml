@@ -8,7 +8,8 @@
 #   ERP_DEMO_PASSWORD  shared password of the demo accounts (>= 8 chars, shown on /login)
 # ERP_ENV is fixed to production: with it the app refuses to start if any secret is missing.
 #
-# Start: migrations -> seed_demo (no-op once the demo data exists) -> uvicorn.
+# Start: the image CMD (scripts/start.sh): migrations -> seed_demo in demo mode (no-op once
+# loaded) -> uvicorn on $PORT. No dockerCommand override.
 # Daily data reset runs from GitHub Actions (.github/workflows/demo-reset.yml).
 
 services:
@@ -20,11 +21,6 @@ services:
     branch: ccr-9e0e04e9-vu4zii
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: >-
-      sh -c "alembic upgrade head
-      && python -m scripts.seed_demo
-      && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
-      --proxy-headers --forwarded-allow-ips '*'"
     healthCheckPath: /health
     autoDeploy: true
     envVars:

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Stock bajo · Sistema ERP{% endblock %}
+{% block content %}
+{% include "reports/_tabs.html" %}
+<h1>Productos con stock bajo</h1>
+<p>Productos activos con stock menor o igual al mínimo, de mayor a menor faltante.</p>
+<div id="low-stock-results">{% include partial %}</div>
+{% endblock %}

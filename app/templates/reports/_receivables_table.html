@@ -1,0 +1,41 @@
+<p>Saldos al {{ report.as_of.strftime("%d/%m/%Y") }}. Antigüedad en días desde el vencimiento; las facturas todavía no vencidas se incluyen en 0-30.</p>
+<div class="overflow-auto">
+<table class="striped" id="receivables-table">
+  <thead>
+    <tr>
+      <th scope="col">Cliente</th>
+      <th scope="col" class="num">Facturas</th>
+      <th scope="col" class="num">0-30</th>
+      <th scope="col" class="num">31-60</th>
+      <th scope="col" class="num">61-90</th>
+      <th scope="col" class="num">+90</th>
+      <th scope="col" class="num">Saldo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in report.rows %}
+    <tr>
+      <td>{{ row.customer_name }}</td>
+      <td class="num">{{ row.invoice_count }}</td>
+      <td class="num">{{ row.days_0_30 | ars }}</td>
+      <td class="num">{{ row.days_31_60 | ars }}</td>
+      <td class="num">{{ row.days_61_90 | ars }}</td>
+      <td class="num">{{ row.days_over_90 | ars }}</td>
+      <td class="num">{{ row.balance | ars }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">No hay saldos pendientes.</td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row" colspan="2">Total</th>
+      <th class="num">{{ report.totals.days_0_30 | ars }}</th>
+      <th class="num">{{ report.totals.days_31_60 | ars }}</th>
+      <th class="num">{{ report.totals.days_61_90 | ars }}</th>
+      <th class="num">{{ report.totals.days_over_90 | ars }}</th>
+      <th class="num">{{ report.totals.balance | ars }}</th>
+    </tr>
+  </tfoot>
+</table>
+</div>

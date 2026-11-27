@@ -1,0 +1,44 @@
+{% if error %}
+<article class="flash flash-error" role="alert">{{ error }}</article>
+{% else %}
+{% set by_product = report.group_by.value == "product" %}
+<p>Del {{ report.date_from.strftime("%d/%m/%Y") }} al {{ report.date_to.strftime("%d/%m/%Y") }}, por {{ group_by_labels[report.group_by] | lower }}.</p>
+<div class="overflow-auto">
+<table class="striped" id="sales-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ group_by_labels[report.group_by] }}</th>
+      {% if not by_product %}<th scope="col" class="num">Facturas</th>{% endif %}
+      <th scope="col" class="num">Neto</th>
+      <th scope="col" class="num">IVA 21%</th>
+      <th scope="col" class="num">IVA 10,5%</th>
+      <th scope="col" class="num">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in report.rows %}
+    <tr>
+      <td>{{ row.label }}</td>
+      {% if not by_product %}<td class="num">{{ row.invoice_count }}</td>{% endif %}
+      <td class="num">{{ row.net | ars }}</td>
+      <td class="num">{{ row.vat_21 | ars }}</td>
+      <td class="num">{{ row.vat_10_5 | ars }}</td>
+      <td class="num">{{ row.total | ars }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="{{ 5 if by_product else 6 }}">Sin facturas en el período.</td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row">Total</th>
+      {% if not by_product %}<th class="num">{{ report.totals.invoice_count }}</th>{% endif %}
+      <th class="num">{{ report.totals.net | ars }}</th>
+      <th class="num">{{ report.totals.vat_21 | ars }}</th>
+      <th class="num">{{ report.totals.vat_10_5 | ars }}</th>
+      <th class="num">{{ report.totals.total | ars }}</th>
+    </tr>
+  </tfoot>
+</table>
+</div>
+{% endif %}

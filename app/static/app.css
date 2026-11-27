@@ -1,0 +1,8 @@
+/* App-level tweaks on top of Pico. */
+.brand { text-decoration: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.flash { padding: .75rem 1rem; margin-bottom: 1rem; }
+.flash-error { border-left: 4px solid var(--pico-del-color); }
+.flash-info { border-left: 4px solid var(--pico-primary); }
+.flash-success { border-left: 4px solid var(--pico-ins-color); }
+@media print { header, .no-print { display: none !important; } }

@@ -8,7 +8,7 @@ delivered/pending quantities and informative totals) shared by the API and web v
 import datetime as dt
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -90,10 +90,8 @@ class OrderView:
 
 def validate_quantity(value: Decimal) -> Decimal:
     """Positive, finite, at most three decimals and within Numeric(12, 3)."""
-    try:
-        valid = value.is_finite() and ZERO < value < MAX_QUANTITY and value == value.quantize(MILLI)
-    except InvalidOperation:
-        valid = False
+    # is_finite() first: comparing NaN raises; bounds before quantize (huge values raise).
+    valid = value.is_finite() and ZERO < value < MAX_QUANTITY and value == value.quantize(MILLI)
     if not valid:
         raise BusinessRuleViolation(
             f"Quantity {value} must be positive with at most three decimals", code="bad_quantity"
@@ -175,6 +173,17 @@ def list_orders(
         for o in orders
     ]
     return items, total
+
+
+def form_options(session: Session) -> tuple[list[Customer], list[Product]]:
+    """Active customers and products, by name: what an order may reference."""
+    customers = Repository(session, Customer).list(
+        Customer.is_active.is_(True), order_by=[Customer.name, Customer.id]
+    )
+    products = Repository(session, Product).list(
+        Product.is_active.is_(True), order_by=[Product.name, Product.id]
+    )
+    return customers, products
 
 
 # Commands ---------------------------------------------------------------------------------

@@ -23,7 +23,7 @@ class OrderRepository(Repository[Order]):
             .options(
                 selectinload(Order.customer),
                 selectinload(Order.lines).selectinload(OrderLine.product),
-                selectinload(Order.delivery_notes),
+                selectinload(Order.delivery_notes).selectinload(DeliveryNote.invoice),
             )
         ).one_or_none()
         if order is None:

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "orders/_macros.html" import status_label %}
+{% block title %}Pedidos · Sistema ERP{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Pedidos</h1>
+  <p>{{ total }} pedido{{ "s" if total != 1 }}</p>
+</hgroup>
+
+<nav>
+  <ul>
+    <li><a href="/orders"{% if status is none %} aria-current="page"{% endif %}>Todos</a></li>
+    {% for s in statuses %}
+    <li><a href="/orders?status={{ s.value }}"{% if status == s %} aria-current="page"{% endif %}>{{ status_label(s) }}</a></li>
+    {% endfor %}
+  </ul>
+  <ul><li><a href="/orders/new" role="button">Nuevo pedido</a></li></ul>
+</nav>
+
+<table>
+  <thead>
+    <tr><th>Número</th><th>Fecha</th><th>Cliente</th><th>Estado</th><th class="num">Total</th></tr>
+  </thead>
+  <tbody>
+    {% for order, totals in items %}
+    <tr>
+      <td><a href="/orders/{{ order.id }}">{{ order.number }}</a></td>
+      <td>{{ order.date.strftime("%d/%m/%Y") }}</td>
+      <td>{{ order.customer.name }}</td>
+      <td>{{ status_label(order.status) }}</td>
+      <td class="num">{{ totals.total | ars }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">No hay pedidos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if pages > 1 %}
+<nav>
+  <ul>
+    {% if page > 1 %}<li><a href="?page={{ page - 1 }}{% if status %}&status={{ status.value }}{% endif %}">Anterior</a></li>{% endif %}
+    <li>Página {{ page }} de {{ pages }}</li>
+    {% if page < pages %}<li><a href="?page={{ page + 1 }}{% if status %}&status={{ status.value }}{% endif %}">Siguiente</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

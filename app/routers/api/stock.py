@@ -18,7 +18,8 @@ from app.schemas.stock import AdjustmentCreate, AdjustmentOut, MovementOut
 from app.services import stock
 from app.services.stock import Adjustment
 
-router = APIRouter(tags=["stock"])
+# Stock is admin-only (docs/plan.md): enforced for every route of this router.
+router = APIRouter(tags=["stock"], dependencies=[Depends(require_roles())])
 
 AdminOnly = Annotated[User, Depends(require_roles())]
 Limit = Annotated[int, Query(ge=1, le=200)]

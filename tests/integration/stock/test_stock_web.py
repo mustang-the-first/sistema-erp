@@ -10,24 +10,26 @@ D = Decimal
 HX = {"HX-Request": "true"}
 
 
-@pytest.mark.parametrize("role", ["admin", "seller", "accountant"])
-def test_stock_page_renders_movements_for_every_role(
-    client_as: ClientAs, db: Session, role: str
-) -> None:
+def test_stock_page_renders_movements_for_admin(client_as: ClientAs, db: Session) -> None:
     make_product(db, sku="STK-WEB", stock=D("7"))
 
-    response = client_as(role).get("/stock")
+    response = client_as("admin").get("/stock")
 
     assert response.status_code == 200
     assert "STK-WEB" in response.text
-    assert ("Nuevo ajuste de stock" in response.text) is (role == "admin")
+    assert "Nuevo ajuste de stock" in response.text
+
+
+@pytest.mark.parametrize("role", ["seller", "accountant"])
+def test_stock_page_forbidden_for_non_admins(client_as: ClientAs, role: str) -> None:
+    assert client_as(role).get("/stock").status_code == 403
 
 
 def test_stock_partial_applies_filters(client_as: ClientAs, db: Session) -> None:
     shown = make_product(db, sku="STK-A", stock=D("1"))
     make_product(db, sku="STK-B", stock=D("1"))
 
-    response = client_as("seller").get(
+    response = client_as("admin").get(
         "/stock",
         params={
             "partial": "true",
@@ -44,7 +46,7 @@ def test_stock_partial_applies_filters(client_as: ClientAs, db: Session) -> None
 
 
 def test_stock_page_invalid_date_returns_422(client_as: ClientAs) -> None:
-    response = client_as("seller").get("/stock", params={"from": "not-a-date"})
+    response = client_as("admin").get("/stock", params={"from": "not-a-date"})
 
     assert (response.status_code, response.json()["code"]) == (422, "invalid_date")
 

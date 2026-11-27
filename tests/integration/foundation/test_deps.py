@@ -1,10 +1,10 @@
+import re
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -130,18 +130,31 @@ def test_web_routers_get_csrf_protection_at_include_time(
     assert probe_client.post("/_test/probe", headers={CSRF_HEADER: "forged"}).status_code == 403
 
 
-def test_every_unsafe_web_route_requires_csrf() -> None:
-    """Guard for Wave 2: any POST/PATCH/PUT/DELETE outside /api must depend on require_csrf."""
-    application = main.create_app(session_factory=sessionmaker())
-    unprotected = [
-        route.path
-        for route in application.routes
-        if isinstance(route, APIRoute)
-        and not route.path.startswith("/api/")
-        and route.methods - {"GET", "HEAD", "OPTIONS"}
-        and require_csrf not in {dep.call for dep in route.dependant.dependencies}
-    ]
-    assert unprotected == []
+UNSAFE_WEB_ROUTES = sorted(
+    (method, route.path)
+    for module in main.WEB_ROUTERS
+    for route in module.router.routes
+    for method in route.methods  # type: ignore[attr-defined]
+    if method not in {"GET", "HEAD", "OPTIONS"}
+)
+
+
+def test_unsafe_web_routes_exist() -> None:
+    """The CSRF guard below must actually check something (it once checked nothing)."""
+    assert len(UNSAFE_WEB_ROUTES) >= 20
+
+
+@pytest.mark.parametrize(("method", "path"), UNSAFE_WEB_ROUTES, ids=lambda v: str(v))
+def test_every_unsafe_web_route_rejects_forged_csrf(
+    client_as: ClientAs, method: str, path: str
+) -> None:
+    """Real requests, as admin (passes every role check), with a forged token: all must be 403.
+    Behavioural on purpose: it does not depend on how FastAPI composes router dependencies."""
+    url = re.sub(r"{[^}]+}", "1", path)
+
+    response = client_as("admin").request(method, url, headers={CSRF_HEADER: "forged"})
+
+    assert response.status_code == 403
 
 
 def test_home_redirects_by_role(client: TestClient, client_as: ClientAs) -> None:

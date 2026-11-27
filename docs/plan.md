@@ -321,7 +321,7 @@ todo.
 | GET / PATCH | `/customers/{id}` | | V, A |
 | GET / POST | `/suppliers` | | A |
 | GET / PATCH | `/suppliers/{id}` | | A |
-| GET | `/stock/movements` | `?product_id&from&to&kind` | todos |
+| GET | `/stock/movements` | `?product_id&from&to&kind` | A |
 | POST | `/stock/adjustments` | `{product_id, quantity (±), reason, note, date}` → movimiento + asiento | A |
 
 ### Ventas
@@ -361,9 +361,30 @@ todo.
 | GET | `/reports/receivables` | `?as_of` → saldo por cliente con antigüedad 0-30 / 31-60 / 61-90 / +90 días desde el vencimiento | C |
 
 ### Vistas web (HTMX)
-`/login`, `/products`, `/customers`, `/suppliers`, `/stock`, `/orders`, `/orders/{id}` (remitir y
-facturar desde ahí), `/invoices/{id}` (imprimible), `/receipts/new`, `/customers/{id}/statement`,
-`/accounting/accounts`, `/accounting/journal`, `/accounting/ledger`, `/reports/*`.
+
+Los permisos de cada vista web se definen acá, no en la navegación (que solo muestra enlaces).
+`tests/integration/foundation/test_web_roles.py` verifica esta tabla ruta por ruta, para cada
+rol, con requests reales. Sin sesión, toda vista (salvo `/login`) redirige a `/login`.
+
+| Vista | Métodos | Roles (+A) |
+|---|---|---|
+| `/login`, `/logout` | GET, POST / POST | público |
+| `/users`, `/users/{id}` | GET, POST, PATCH | A |
+| `/products` (listado) | GET | V, C |
+| `/products/{id}` (formulario de edición), alta y edición | GET, POST, PATCH | A |
+| `/customers`, `/customers/{id}` | GET, POST, PATCH | V |
+| `/suppliers`, `/suppliers/{id}` | GET, POST, PATCH | A |
+| `/stock`, `/stock/adjustments` | GET, POST | A |
+| `/orders`, `/orders/new`, `/orders/{id}` y acciones (confirmar, anular, remitir) | GET, POST, PATCH | V |
+| `/delivery-notes`, `/delivery-notes/{id}` | GET | V, C |
+| `/invoices`, `/invoices/{id}` (imprimible) | GET | V, C |
+| `/delivery-notes/{id}/invoice` (facturar) | POST | V |
+| `/receipts/new`, `/receipts/new/open-invoices`, `/receipts/{id}`, `/receipts` | GET, POST | V, C |
+| `/customers/{id}/statement` | GET | V, C |
+| `/accounting/accounts`, `/accounting/journal`, `/accounting/ledger` | GET, POST, PATCH | C |
+| `/reports/sales` | GET | V, C |
+| `/reports/low-stock` | GET | V |
+| `/reports/receivables` | GET | C |
 
 ### Infra
 `GET /health` → `{"status": "ok"}` (público).

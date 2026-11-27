@@ -100,10 +100,9 @@ def test_post_adjustment_non_admin_returns_403(client_as: ClientAs, db: Session,
     assert db.get(Product, product.id).stock_qty == 0  # type: ignore[union-attr]
 
 
-@pytest.mark.parametrize("role", ["admin", "seller", "accountant"])
-def test_stock_listings_readable_by_every_role(client_as: ClientAs, db: Session, role: str) -> None:
+def test_stock_listings_readable_by_admin(client_as: ClientAs, db: Session) -> None:
     product = make_product(db, stock=D("4"))
-    client = client_as(role)
+    client = client_as("admin")
 
     movements = client.get(f"{API}/stock/movements", params={"product_id": product.id})
     adjustments = client.get(f"{API}/stock/adjustments", params={"product_id": product.id})
@@ -141,8 +140,16 @@ def test_list_movements_date_and_kind_filters(client_as: ClientAs, db: Session) 
     assert damages["total"] == 1
 
 
+@pytest.mark.parametrize("role", ["seller", "accountant"])
+@pytest.mark.parametrize("path", ["/stock/movements", "/stock/adjustments"])
+def test_stock_listings_forbidden_for_non_admins(client_as: ClientAs, role: str, path: str) -> None:
+    response = client_as(role).get(f"{API}{path}")
+
+    assert (response.status_code, response.json()["code"]) == (403, "forbidden")
+
+
 def test_list_movements_inverted_range_returns_422(client_as: ClientAs) -> None:
-    response = client_as("seller").get(
+    response = client_as("admin").get(
         f"{API}/stock/movements", params={"from": "2026-11-05", "to": "2026-11-01"}
     )
 

@@ -21,7 +21,8 @@ from app.schemas.stock import AdjustmentCreate
 from app.services import catalog, stock
 from app.services.stock import REASON_LABELS
 
-router = APIRouter(tags=["stock"])
+# Stock is admin-only (docs/plan.md): enforced for every route of this router.
+router = APIRouter(tags=["stock"], dependencies=[Depends(require_roles())])
 
 AdminOnly = Annotated[User, Depends(require_roles())]
 PAGE_SIZE = 100

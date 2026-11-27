@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "orders/_macros.html" import product_lines %}
+{% block title %}Nuevo pedido · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Nuevo pedido</h1>
+
+<form hx-post="/orders" hx-target="#flash">
+  <div class="grid">
+    <label>
+      Cliente
+      <select name="customer_id" required>
+        <option value="" disabled selected>Elegí un cliente</option>
+        {% for customer in customers %}
+        <option value="{{ customer.id }}">{{ customer.name }}{% if customer.cuit %} ({{ customer.cuit }}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Fecha
+      <input type="date" name="date">
+      <small>Vacío: hoy.</small>
+    </label>
+  </div>
+  <label>
+    Notas
+    <textarea name="notes" rows="2"></textarea>
+  </label>
+
+  <h2>Productos</h2>
+  <p><small>Completá la cantidad de los productos a pedir. Precio e IVA se copian del producto.</small></p>
+  {{ product_lines(products, quantities) }}
+
+  <button type="submit">Crear pedido (borrador)</button>
+  <a href="/orders" role="button" class="secondary">Volver</a>
+</form>
+{% endblock %}

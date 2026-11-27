@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% from "orders/_macros.html" import status_label, doc_number, qty, product_lines %}
+{% block title %}Pedido {{ order.number }} · Sistema ERP{% endblock %}
+{% block content %}
+<hgroup>
+  <h1>Pedido {{ order.number }} {{ status_label(order.status) }}</h1>
+  <p>{{ order.customer.name }} · {{ order.date.strftime("%d/%m/%Y") }}</p>
+</hgroup>
+
+{% if order.notes %}<p><strong>Notas:</strong> {{ order.notes }}</p>{% endif %}
+
+<div class="no-print" role="group">
+  {% if order.status.value == "draft" %}
+  <button hx-post="/orders/{{ order.id }}/confirm" hx-target="#flash">Confirmar</button>
+  {% endif %}
+  {% if order.status.value in ("draft", "confirmed") and not order.delivery_notes %}
+  <button class="secondary" hx-post="/orders/{{ order.id }}/cancel" hx-target="#flash"
+          hx-confirm="¿Cancelar el pedido {{ order.number }}?">Cancelar pedido</button>
+  {% endif %}
+  <a href="/orders" role="button" class="outline">Volver</a>
+</div>
+
+<h2>Líneas</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Producto</th><th class="num">Cantidad</th><th class="num">Remitido</th><th class="num">Pendiente</th>
+      <th class="num">Precio neto</th><th>IVA</th><th class="num">Neto</th><th class="num">IVA $</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for lv in view.lines %}
+    <tr>
+      <td>{{ lv.line.product.sku }} · {{ lv.line.product.name }}</td>
+      <td class="num">{{ qty(lv.line.quantity) }}</td>
+      <td class="num">{{ qty(lv.delivered_quantity) }}</td>
+      <td class="num">{{ qty(lv.pending_quantity) }}</td>
+      <td class="num">{{ lv.line.unit_price | ars }}</td>
+      <td>{{ lv.line.vat_rate.value | replace(".0", "") | replace(".", ",") }}%</td>
+      <td class="num">{{ lv.net_amount | ars }}</td>
+      <td class="num">{{ lv.vat_amount | ars }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><th colspan="6">Neto</th><td class="num" colspan="2">{{ view.totals.net_total | ars }}</td></tr>
+    <tr><th colspan="6">IVA 21%</th><td class="num" colspan="2">{{ view.totals.vat_21 | ars }}</td></tr>
+    <tr><th colspan="6">IVA 10,5%</th><td class="num" colspan="2">{{ view.totals.vat_10_5 | ars }}</td></tr>
+    <tr><th colspan="6">Total (informativo)</th><td class="num" colspan="2"><strong>{{ view.totals.total | ars }}</strong></td></tr>
+  </tfoot>
+</table>
+
+{% if order.status.value == "draft" %}
+<details class="no-print">
+  <summary>Editar borrador</summary>
+  <form hx-patch="/orders/{{ order.id }}" hx-target="#flash">
+    <label>
+      Notas
+      <textarea name="notes" rows="2">{{ order.notes or "" }}</textarea>
+    </label>
+    <p><small>Las líneas se reemplazan por las cantidades de esta tabla, con el precio actual de cada producto.</small></p>
+    {{ product_lines(products, quantities) }}
+    <button type="submit">Guardar cambios</button>
+  </form>
+</details>
+{% endif %}
+
+{% if deliverable %}
+<section class="no-print" id="deliver">
+  <h2>Remitir</h2>
+  <form hx-post="/orders/{{ order.id }}/delivery-notes" hx-target="#flash"
+        hx-confirm="¿Emitir el remito? Descuenta stock y no se puede modificar.">
+    <label>
+      Fecha
+      <input type="date" name="date">
+      <small>Vacío: hoy.</small>
+    </label>
+    <table>
+      <thead><tr><th>Producto</th><th class="num">Pendiente</th><th class="num">A remitir</th></tr></thead>
+      <tbody>
+        {% for lv in view.lines if lv.pending_quantity > 0 %}
+        <tr>
+          <td>{{ lv.line.product.sku }} · {{ lv.line.product.name }}</td>
+          <td class="num">{{ qty(lv.pending_quantity) }}</td>
+          <td class="num">
+            <input type="hidden" name="order_line_id" value="{{ lv.line.id }}">
+            <input type="text" inputmode="decimal" name="quantity" value="{{ qty(lv.pending_quantity) }}"
+                   aria-label="Cantidad a remitir de {{ lv.line.product.name }}">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit">Emitir remito</button>
+  </form>
+</section>
+{% endif %}
+
+<h2>Remitos</h2>
+<table>
+  <thead><tr><th>Remito</th><th>Fecha</th><th class="no-print"></th></tr></thead>
+  <tbody>
+    {% for note in order.delivery_notes | sort(attribute="id") %}
+    <tr>
+      <td><a href="/delivery-notes/{{ note.id }}">{{ doc_number(note.point_of_sale, note.number) }}</a></td>
+      <td>{{ note.date.strftime("%d/%m/%Y") }}</td>
+      <td class="no-print">
+        {# ===== PLACEHOLDER · D2 (Invoices): "Facturar" button for this delivery note. =====
+           D1 renders no invoice actions. D2 owns the invoice routes and ships the partial
+           templates/invoices/_invoice_button.html (context: `note`, the DeliveryNote).
+           Shown only for non-invoiced notes; renders nothing until D2's file exists. #}
+        {% if note.invoice is none %}
+        {% include "invoices/_invoice_button.html" ignore missing %}
+        {% else %}
+        Facturado
+        {% endif %}
+        {# ===== END PLACEHOLDER · D2 ===== #}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3">Sin remitos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

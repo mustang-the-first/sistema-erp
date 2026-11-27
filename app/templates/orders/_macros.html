@@ -1,0 +1,44 @@
+{# Shared helpers for order and delivery note pages. Owner: agent D1. #}
+{% macro status_label(status) -%}
+{%- set labels = {
+  "draft": "Borrador",
+  "confirmed": "Confirmado",
+  "partially_delivered": "Remitido parcial",
+  "delivered": "Remitido",
+  "cancelled": "Cancelado",
+} -%}
+<mark class="order-status" data-status="{{ status }}">{{ labels.get(status | string, status) }}</mark>
+{%- endmacro %}
+
+{% macro doc_number(point_of_sale, number) -%}
+{{ "%04d-%08d" | format(point_of_sale, number) }}
+{%- endmacro %}
+
+{% macro qty(value) -%}
+{{ "{:.3f}".format(value) | replace(".", ",") }}
+{%- endmacro %}
+
+{% macro product_lines(products, quantities) -%}
+<table>
+  <thead>
+    <tr><th>SKU</th><th>Producto</th><th class="num">Precio neto</th><th>IVA</th><th class="num">Cantidad</th></tr>
+  </thead>
+  <tbody>
+    {% for product in products %}
+    <tr>
+      <td>{{ product.sku }}</td>
+      <td>{{ product.name }}</td>
+      <td class="num">{{ product.unit_price | ars }}</td>
+      <td>{{ product.vat_rate.value | replace(".0", "") | replace(".", ",") }}%</td>
+      <td class="num">
+        <input type="hidden" name="product_id" value="{{ product.id }}">
+        <input type="text" inputmode="decimal" name="quantity" aria-label="Cantidad de {{ product.name }}"
+               value="{{ qty(quantities[product.id]) if product.id in quantities else '' }}">
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">No hay productos activos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{%- endmacro %}

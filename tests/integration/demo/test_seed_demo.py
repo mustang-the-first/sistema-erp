@@ -14,6 +14,7 @@ from app.models.stock import StockMovement
 from app.models.users import User
 from app.services.invoice_balance import invoice_balances_subquery
 from scripts.seed_demo import DEMO_USERS, seed_demo
+from tests.conftest import ClientAs
 
 PASSWORD = "demo-password-for-tests"
 AS_OF = dt.date(2026, 11, 27)
@@ -84,3 +85,13 @@ def test_seed_demo_twice_changes_nothing(seeded: Session) -> None:
 
     assert not again.created
     assert (_count(seeded, User), _count(seeded, Order), _count(seeded, Invoice)) == before
+
+
+def test_demo_receivables_fill_every_aging_bucket(seeded: Session, client_as: ClientAs) -> None:
+    report = client_as("accountant").get(
+        "/api/v1/reports/receivables", params={"as_of": AS_OF.isoformat()}
+    )
+
+    totals = report.json()["totals"]
+    for bucket in ("days_0_30", "days_31_60", "days_61_90", "days_over_90"):
+        assert Decimal(totals[bucket]) > 0, bucket

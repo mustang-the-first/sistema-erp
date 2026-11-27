@@ -1,4 +1,4 @@
-"""Load a demo dataset: one user per role and ~90 days of order-to-cash activity.
+"""Load a demo dataset: one user per role and ~4 months of order-to-cash activity.
 
 Usage:
     uv run python -m scripts.seed_demo            # password from ERP_DEMO_PASSWORD
@@ -131,7 +131,7 @@ def seed_demo(session: Session, *, password: str, as_of: dt.date | None = None) 
                 product_id=product.id,
                 quantity=D(initial),
                 reason=AdjustmentReason.INITIAL_LOAD,
-                date=ago(95),
+                date=ago(140),
                 note="Inventario inicial",
             ),
             created_by=admin,
@@ -240,11 +240,11 @@ def seed_demo(session: Session, *, password: str, as_of: dt.date | None = None) 
         )
 
     cash, bank = PaymentMethod.CASH, PaymentMethod.BANK_TRANSFER
-    _, _, inv1 = sell("ri", 85, [("YER-1", "20"), ("HAR-1", "40")])
+    _, _, inv1 = sell("ri", 130, [("YER-1", "20"), ("HAR-1", "40")])
     _, _, inv2 = sell("ri2", 70, [("FID-500", "30"), ("ACE-900", "10")])
     _, _, inv3 = sell("mono", 60, [("YER-05", "10"), ("AZU-1", "12")])
-    _, _, inv4 = sell("exento", 50, [("HAR-1", "60"), ("FID-500", "40")])
-    _, _, inv5 = sell("ri", 35, [("ACE-900", "8"), ("YER-1", "15")])
+    _, _, inv4 = sell("exento", 100, [("HAR-1", "60"), ("FID-500", "40")])
+    _, _, inv5 = sell("ri", 75, [("ACE-900", "8"), ("YER-1", "15")])
     _, _, inv6 = sell("cf", 20, [("YER-05", "2")])
     _, _, inv7 = sell("ri2", 10, [("AZU-1", "20"), ("HAR-1", "50")])
     _, _, inv8 = sell("mono", 3, [("YER-1", "5")])
@@ -254,10 +254,11 @@ def seed_demo(session: Session, *, password: str, as_of: dt.date | None = None) 
     sell("exento", 1, [("AZU-1", "10")], deliver=False)  # confirmed, not delivered
     sell("cf", 0, [("YER-05", "1")], confirm=False)  # draft
 
+    # Aging as of today: +90 (inv1), 61-90 (inv4), 31-60 (inv5), 0-30 (inv7, inv8).
     pay("ri", 60, bank, (inv1, "50000.00"))  # partial: the rest is 90+ days overdue
     pay("ri2", 50, bank, (inv2, _total(session, inv2)))
     pay("mono", 55, cash, (inv3, _total(session, inv3)))
-    pay("exento", 15, bank, (inv4, "40000.00"))  # partial
+    pay("exento", 15, bank, (inv4, "40000.00"))  # partial: the rest is 61-90 days overdue
     pay("cf", 20, cash, (inv6, _total(session, inv6)))
     pay("mono", 1, cash, (inv8, "5000.00"))  # partial, not yet due
 

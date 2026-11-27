@@ -6,3 +6,6 @@
 .flash-info { border-left: 4px solid var(--pico-primary); }
 .flash-success { border-left: 4px solid var(--pico-ins-color); }
 @media print { header, .no-print { display: none !important; } }
+.demo-banner { background: #fff3cd; color: #664d03; border-bottom: 1px solid #ffe69c;
+  padding: .5rem 1rem; text-align: center; font-size: .9rem; }
+@media print { .demo-banner { display: none !important; } }

@@ -34,6 +34,9 @@ ERROR_TEXTS = {
     ),
     "cannot_deactivate_self": "No podés desactivar tu propio usuario.",
     "cannot_demote_self": "No podés quitarte el rol de administrador.",
+    "demo_mode_locked": (
+        "En la demo no se pueden cambiar contraseñas ni roles, ni desactivar usuarios."
+    ),
 }
 
 

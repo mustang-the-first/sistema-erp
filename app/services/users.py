@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.demo import demo_mode, is_demo_account
 from app.core.errors import BusinessRuleViolation
 from app.core.security import hash_password
 from app.models.enums import UserRole
@@ -100,8 +101,22 @@ def get_user(session: Session, user_id: int) -> User:
     return UserRepository(session).get_or_raise(user_id)
 
 
+def ensure_allowed_in_demo(user: User, changes: UserChanges, *, actor: User) -> None:
+    """In demo mode the shared demo accounts cannot lock visitors out of the demo."""
+    if not (demo_mode() and is_demo_account(actor.email)):
+        return
+    changes_role = changes.role is not None and changes.role is not user.role
+    deactivates = changes.is_active is False and user.is_active
+    if changes.password is not None or changes_role or deactivates:
+        raise BusinessRuleViolation(
+            "Demo accounts cannot change passwords or roles, or deactivate users",
+            code="demo_mode_locked",
+        )
+
+
 def update_user(session: Session, user_id: int, changes: UserChanges, *, actor: User) -> User:
     user = UserRepository(session).get_or_raise(user_id)
+    ensure_allowed_in_demo(user, changes, actor=actor)
     is_self = user.id == actor.id
     if is_self and changes.is_active is False:
         raise BusinessRuleViolation("You cannot deactivate yourself", code="cannot_deactivate_self")

@@ -8,12 +8,11 @@ Everything goes through the business services (stock ledger, posting engine, num
 the demo data obeys the same rules as data entered in the app. It refuses to run twice: if the
 demo users already exist, it changes nothing and exits 0.
 
-Demo users (password: ERP_DEMO_PASSWORD, default ``demo-erp-2026``):
+Demo users (password: ERP_DEMO_PASSWORD; ``demo-erp-2026`` outside production only):
     admin@demo.local (admin) · vendedor@demo.local (seller) · contador@demo.local (accountant)
 """
 
 import datetime as dt
-import os
 import sys
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -22,7 +21,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.clock import today
+from app.core.config import get_settings
 from app.core.db import default_session_factory
+from app.core.demo import DEFAULT_DEMO_PASSWORD, DEMO_USERS
 from app.models.enums import AdjustmentReason, PaymentMethod, TaxCondition, UserRole, VatRate
 from app.models.sales import DeliveryNote
 from app.models.users import User
@@ -31,13 +32,6 @@ from app.schemas.stock import AdjustmentCreate
 from app.services import catalog, collections, delivery_notes, invoices, orders, stock, users
 from app.services.chart_seed import seed_chart_of_accounts
 
-PASSWORD_ENV = "ERP_DEMO_PASSWORD"  # noqa: S105 - env var name, not a secret
-DEFAULT_PASSWORD = "demo-erp-2026"  # noqa: S105 - public demo credentials, documented in README
-DEMO_USERS = (
-    ("admin@demo.local", "Ana Admin", UserRole.ADMIN),
-    ("vendedor@demo.local", "Vito Vendedor", UserRole.SELLER),
-    ("contador@demo.local", "Carla Contadora", UserRole.ACCOUNTANT),
-)
 D = Decimal
 
 
@@ -286,15 +280,26 @@ def _total(session: Session, invoice_id: int | None) -> str:
     return str(invoices.get_invoice(session, invoice_id).invoice.total)
 
 
+def demo_password_or_exit() -> str:
+    """ERP_DEMO_PASSWORD; the development default is never used in production."""
+    settings = get_settings()
+    if settings.demo_password:
+        return settings.demo_password
+    if settings.env == "production":
+        print("ERP_DEMO_PASSWORD is required in production.", file=sys.stderr)
+        raise SystemExit(1)
+    return DEFAULT_DEMO_PASSWORD
+
+
 def main() -> int:
-    password = os.environ.get(PASSWORD_ENV, DEFAULT_PASSWORD)
+    password = demo_password_or_exit()
     with default_session_factory().begin() as session:
         summary = seed_demo(session, password=password)
     if not summary.created:
         print("Demo data already loaded: nothing to do.")
         return 0
     print("Demo data loaded:", ", ".join(f"{v} {k}" for k, v in summary.counts.items()))
-    print("Users:", ", ".join(summary.users), f"(password from {PASSWORD_ENV} or the default)")
+    print("Users:", ", ".join(summary.users), "(password: ERP_DEMO_PASSWORD)")
     return 0
 
 

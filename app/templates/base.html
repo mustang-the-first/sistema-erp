@@ -10,6 +10,12 @@
 </head>
 {% set user = request.state.user if request.state.user is defined else None %}
 <body {% if request.state.csrf_token is defined %}hx-headers='{"X-CSRF-Token": "{{ request.state.csrf_token }}"}'{% endif %}>
+  {% if demo_mode() %}
+  <div class="demo-banner" role="note" data-testid="demo-banner">
+    <strong>Demo pública.</strong> Los datos son de ejemplo y se reinician todos los días a las
+    {{ demo_reset_time }}. Las cuentas demo no pueden cambiar contraseñas ni roles.
+  </div>
+  {% endif %}
   <header class="container">
     <nav>
       <ul><li><a href="/" class="brand"><strong>Sistema ERP</strong></a></li></ul>

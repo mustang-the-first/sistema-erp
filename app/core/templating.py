@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
+from app.core.demo import DEMO_USERS, RESET_TIME_LABEL, demo_mode, demo_password
 from app.core.money import format_ars
 from app.models.enums import UserRole
 from app.models.users import User
@@ -46,3 +47,7 @@ def nav_for(user: User | None) -> list[NavItem]:
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 templates.env.filters["ars"] = format_ars
 templates.env.globals["nav_for"] = nav_for
+templates.env.globals["demo_mode"] = demo_mode  # called at render time: follows settings
+templates.env.globals["demo_users"] = DEMO_USERS
+templates.env.globals["demo_password"] = demo_password
+templates.env.globals["demo_reset_time"] = RESET_TIME_LABEL

@@ -15,7 +15,9 @@ LANDING = {
 }
 
 
-@router.get("/")
+# HEAD too: uptime monitors and link previewers probe the root with HEAD.
+@router.api_route("/", methods=["GET", "HEAD"])
 def home(user: OptionalUser) -> RedirectResponse:
+    """No session -> /login; logged in -> the landing page of the user's role."""
     target = "/login" if user is None else LANDING[user.role]
     return RedirectResponse(target, status_code=303)

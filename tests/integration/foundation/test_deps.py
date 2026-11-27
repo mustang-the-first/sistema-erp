@@ -159,11 +159,29 @@ def test_every_unsafe_web_route_rejects_forged_csrf(
     assert response.status_code == 403
 
 
-def test_home_redirects_by_role(client: TestClient, client_as: ClientAs) -> None:
-    assert client.get("/", follow_redirects=False).headers["location"] == "/login"
-    assert client_as("seller").get("/", follow_redirects=False).headers["location"] == "/orders"
-    accountant = client_as("accountant").get("/", follow_redirects=False)
-    assert accountant.headers["location"] == "/accounting/journal"
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+@pytest.mark.parametrize(
+    ("role", "landing"),
+    [
+        (None, "/login"),
+        ("admin", "/orders"),
+        ("seller", "/orders"),
+        ("accountant", "/accounting/journal"),
+    ],
+)
+def test_home_redirects_by_role(
+    client: TestClient, client_as: ClientAs, method: str, role: str | None, landing: str
+) -> None:
+    http = client if role is None else client_as(role)
+
+    response = http.request(method, "/", follow_redirects=False)
+
+    assert (response.status_code, response.headers["location"]) == (303, landing)
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+def test_health_answers_get_and_head(client: TestClient, method: str) -> None:
+    assert client.request(method, "/health").status_code == 200
 
 
 def test_layout_renders_role_nav_and_csrf_header(client_as: ClientAs) -> None:

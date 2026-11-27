@@ -47,7 +47,13 @@ def r(method: str, path: str, *roles: str) -> WebRoute:
     return WebRoute(method, path, frozenset(roles))
 
 
-PUBLIC = {("GET", "/"), ("GET", "/login"), ("POST", "/login"), ("POST", "/logout")}
+PUBLIC = {
+    ("GET", "/"),
+    ("HEAD", "/"),
+    ("GET", "/login"),
+    ("POST", "/login"),
+    ("POST", "/logout"),
+}
 
 ROUTES: tuple[WebRoute, ...] = (
     # Users (admin)

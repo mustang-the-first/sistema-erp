@@ -71,7 +71,7 @@ def create_app(session_factory: sessionmaker[Session] | None = None) -> FastAPI:
     register_exception_handlers(app)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-    @app.get("/health", tags=["health"])
+    @app.api_route("/health", methods=["GET", "HEAD"], tags=["health"])
     def health() -> dict[str, str]:
         return {"status": "ok"}
 

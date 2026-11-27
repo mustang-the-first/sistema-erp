@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Ingresar · Sistema ERP{% endblock %}
+{% block content %}
+<article style="max-width: 28rem; margin: 2rem auto;">
+  <header><h2>Ingresar</h2></header>
+  {% if error %}
+  <div class="flash flash-error" role="alert">Email o contraseña incorrectos.</div>
+  {% endif %}
+  <form method="post" action="/login">
+    <label>Email
+      <input type="email" name="email" value="{{ email }}" autocomplete="username" required autofocus>
+    </label>
+    <label>Contraseña
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Ingresar</button>
+  </form>
+</article>
+{% endblock %}

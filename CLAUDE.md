@@ -59,6 +59,23 @@ Requisitos: [uv](https://docs.astral.sh/uv/) y Docker. Python 3.12 (lo instala u
 
 Variables en `.env` (ver `.env.example`), prefijo `ERP_`. Los tests usan `ERP_TEST_DATABASE_URL`.
 
+## Entorno de ejecución (sesiones cloud / agentes)
+
+- **El contenedor puede reiniciarse en cualquier momento** y matar todos los procesos en
+  background (dockerd, Postgres, servidores). Antes de asumir que algo está caído por tu código,
+  verificá que el proceso exista.
+- **Nunca** corras `dockerd`, `uvicorn` ni otro proceso largo en primer plano. Lanzalo con
+  `nohup <cmd> > /tmp/<nombre>.log 2>&1 &` y esperá con un bucle acotado:
+  `timeout 60 sh -c 'until docker info >/dev/null 2>&1; do sleep 2; done'`.
+- Si Docker no responde en 60 s, no lo uses: instalá PostgreSQL 17 por apt, creá el usuario
+  `erp` y las bases `erp` y `erp_test`, y apuntá `ERP_DATABASE_URL` / `ERP_TEST_DATABASE_URL`
+  ahí. El build de la imagen lo verifica el job `docker` del CI.
+- **Todo comando que pueda colgarse va con `timeout`**: `timeout 600 make check`,
+  `timeout 300 uv run pytest ...`, `timeout 20 psql ...`. Nunca reintentes igual un comando que
+  colgó: diagnosticá primero (`pg_stat_activity`, `pg_locks`, `pg_blocking_pids`).
+- **Una base de test por agente:** `ERP_TEST_AGENT=b` hace que los tests usen `erp_test_b` (el
+  conftest la crea si falta). Agentes en paralelo nunca comparten base de test.
+
 ## Tests
 
 - `tests/unit/<module>/` — lógica pura (cálculo de IVA, armado de asientos, letra de factura),

@@ -14,6 +14,8 @@ Markers are added by directory: tests/unit -> unit, tests/integration -> integra
 tests/e2e -> e2e. Concurrency tests add ``@pytest.mark.concurrency`` themselves.
 """
 
+import os
+import re
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,7 +25,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, make_url, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -45,7 +47,21 @@ from app.services.chart_seed import seed_chart_of_accounts
 from tests.factories import make_user
 
 ROOT = Path(__file__).resolve().parents[1]
-TEST_DATABASE_URL = get_settings().test_database_url
+
+
+def _test_database_url() -> str:
+    """ERP_TEST_AGENT=b -> erp_test_b. One database per parallel agent/worktree, so their
+    TRUNCATE and DROP SCHEMA never collide. Unset -> ERP_TEST_DATABASE_URL as is."""
+    url = make_url(get_settings().test_database_url)
+    agent = os.environ.get("ERP_TEST_AGENT", "").strip().lower()
+    if agent:
+        if not re.fullmatch(r"[a-z0-9_]{1,20}", agent):
+            raise pytest.UsageError(f"ERP_TEST_AGENT must match [a-z0-9_]{{1,20}}, got {agent!r}")
+        url = url.set(database=f"{url.database}_{agent}")
+    return url.render_as_string(hide_password=False)
+
+
+TEST_DATABASE_URL = _test_database_url()
 # Seeded once per run and never truncated.
 PERSISTENT_TABLES = frozenset({"accounts", "system_accounts"})
 DIRECTORY_MARKERS = {"unit": "unit", "integration": "integration", "e2e": "e2e"}
@@ -83,9 +99,28 @@ def build_test_engine(url: str = TEST_DATABASE_URL, **kwargs: object) -> Engine:
 # Database ---------------------------------------------------------------------------------
 
 
+def _create_database_if_missing(url: str) -> None:
+    target = make_url(url)
+    admin = build_test_engine(
+        target.set(database="postgres").render_as_string(hide_password=False),
+        poolclass=NullPool,
+        isolation_level="AUTOCOMMIT",
+    )
+    try:
+        with admin.connect() as conn:
+            exists = conn.scalar(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": target.database}
+            )
+            if not exists:
+                conn.execute(text(f'CREATE DATABASE "{target.database}"'))
+    finally:
+        admin.dispose()
+
+
 @pytest.fixture(scope="session")
 def migrated_database() -> str:
     """Rebuild the test database from the migrations (not create_all) once per run."""
+    _create_database_if_missing(TEST_DATABASE_URL)
     bootstrap = build_test_engine(poolclass=NullPool)
     try:
         with bootstrap.begin() as conn:

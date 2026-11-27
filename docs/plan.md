@@ -461,6 +461,30 @@ de lanzar la Ola 2.
 
 ### Ola 2 — 7 agentes en paralelo (dependen solo de la Fundación)
 
+Reglas adicionales (aprobadas en el gate de la Ola 1):
+
+1. Cada agente usa su propia base de test: `ERP_TEST_AGENT=<a|b|c|d1|d2|e|f>`.
+2. **Nadie modifica** `app/models/`, `migrations/`, `app/core/`, `app/main.py`,
+   `app/repositories/base.py`, `app/services/{posting,stock_ledger,sequences,invoice_balance,chart_seed}.py`,
+   `tests/conftest.py`, `tests/factories/`, `templates/base.html`, `pyproject.toml`/`uv.lock`,
+   `Makefile` ni el CI. Si necesita un cambio, lo reporta y sigue con un stub.
+3. Cada agente termina con `make check` verde en su worktree y entrega un resumen: endpoints
+   implementados, tests y desvíos del contrato.
+4. Merge de a uno, con `make check` después de cada merge, en orden: A, B, C, D1, D2, E, F.
+
+Convenciones compartidas de la API (para que los 7 módulos sean consistentes):
+
+- Montos y cantidades se serializan como **string decimal** (`"1762.50"`, Pydantic v2 con
+  `Decimal`); fechas ISO `YYYY-MM-DD`.
+- Listados: `?limit=50&offset=0` (máx. 200) y respuesta `{"items": [...], "total": n}`.
+- Errores: excepciones de `app/core/errors.py` → `{"detail", "code"}` (401/403/404/422).
+- Roles con `require_roles(...)` en el router o el endpoint; el admin siempre pasa.
+- `created_by` = usuario actual; fecha por defecto `app.core.clock.today()`; punto de venta
+  `get_settings().point_of_sale`.
+- **D2:** la factura A a un cliente Monotributo expone `legend` (texto de la Ley 27.618) en la
+  respuesta de la API y lo muestra en la vista imprimible; `null`/ausente en los demás casos.
+  Tiene su propio test en ambos lugares.
+
 Patrón de archivos por módulo `<m>`: `routers/api/<m>.py`, `routers/web/<m>.py`,
 `services/<m>.py`, `repositories/<m>.py`, `schemas/<m>.py`, `templates/<m>/`,
 `tests/unit/<m>/`, `tests/integration/<m>/`.

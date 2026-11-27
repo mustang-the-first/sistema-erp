@@ -22,6 +22,10 @@ db:
 migrate:
 	uv run alembic upgrade head
 
+migrate-check:
+	uv run alembic upgrade head
+	uv run alembic check
+
 run:
 	uv run uvicorn app.main:app --reload
 
@@ -30,4 +34,4 @@ up:
 
 check: lint test
 
-.PHONY: install lint format test test-unit db migrate run up check
+.PHONY: install lint format test test-unit db migrate migrate-check run up check

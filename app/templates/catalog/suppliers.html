@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Proveedores · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Proveedores</h1>
+<form id="suppliers-filter" role="search" hx-get="/suppliers" hx-vals='{"partial": "true"}'
+      hx-target="#suppliers-table" hx-trigger="submit, change">
+  <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre o CUIT" aria-label="Buscar">
+  {% include "catalog/_active_filter.html" %}
+  <button type="submit">Buscar</button>
+</form>
+<div id="suppliers-table" hx-get="/suppliers" hx-vals='{"partial": "true"}' hx-include="#suppliers-filter"
+     hx-trigger="suppliers-changed from:body">
+  {% include "catalog/_suppliers_table.html" %}
+</div>
+
+<details>
+  <summary role="button" class="outline">Nuevo proveedor</summary>
+  <form hx-post="/suppliers" hx-target="#flash">
+    {% set supplier = None %}
+    {% include "catalog/_supplier_fields.html" %}
+    <button type="submit">Crear proveedor</button>
+  </form>
+</details>
+{% endblock %}

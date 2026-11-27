@@ -1,0 +1,20 @@
+<table class="striped">
+  <thead>
+    <tr><th>Nombre</th><th>CUIT</th><th>Condición IVA</th><th>Email</th><th>Teléfono</th><th>Estado</th></tr>
+  </thead>
+  <tbody>
+    {% for s in suppliers %}
+    <tr>
+      <td><a href="/suppliers/{{ s.id }}">{{ s.name }}</a></td>
+      <td>{{ s.cuit }}</td>
+      <td>{{ tax_condition_labels[s.tax_condition] }}</td>
+      <td>{{ s.email or "" }}</td>
+      <td>{{ s.phone or "" }}</td>
+      <td>{{ "Activo" if s.is_active else "Inactivo" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">No hay proveedores.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<small>{{ suppliers | length }} de {{ total }} proveedores</small>

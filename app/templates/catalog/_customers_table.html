@@ -1,0 +1,21 @@
+<table class="striped">
+  <thead>
+    <tr><th>Nombre</th><th>CUIT</th><th>Condición IVA</th><th class="num">Plazo (días)</th><th>Email</th><th>Estado</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for c in customers %}
+    <tr>
+      <td><a href="/customers/{{ c.id }}">{{ c.name }}</a></td>
+      <td>{{ c.cuit or "—" }}</td>
+      <td>{{ tax_condition_labels[c.tax_condition] }}</td>
+      <td class="num">{{ c.payment_terms_days }}</td>
+      <td>{{ c.email or "" }}</td>
+      <td>{{ "Activo" if c.is_active else "Inactivo" }}</td>
+      <td><a href="/customers/{{ c.id }}/statement">Cuenta corriente</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">No hay clientes.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<small>{{ customers | length }} de {{ total }} clientes</small>

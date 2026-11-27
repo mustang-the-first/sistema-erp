@@ -1,11 +1,12 @@
 import re
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.core.security import CSRF_HEADER, SESSION_COOKIE
+from app.core.security import CSRF_HEADER, SESSION_COOKIE, hash_token, new_session_token
 from app.models.enums import UserRole
-from app.models.users import User
+from app.models.users import User, UserSession
 from app.repositories.users import UserRepository
 from tests.conftest import ClientAs
 from tests.factories import make_user
@@ -36,6 +37,54 @@ def test_login_page_with_stale_cookie_clears_it(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert f'{SESSION_COOKIE}="";' in response.headers["set-cookie"]
+
+
+def _expired_session_cookie(db: Session, user: User) -> str:
+    token = new_session_token()
+    db.add(
+        UserSession(
+            token_hash=hash_token(token),
+            user_id=user.id,
+            expires_at=datetime.now(UTC) - timedelta(minutes=1),
+        )
+    )
+    db.flush()
+    return token
+
+
+def test_login_form_with_expired_session_cookie_logs_in(client: TestClient, db: Session) -> None:
+    user = make_user(db, email="back@example.com")
+    client.cookies.set(SESSION_COOKIE, _expired_session_cookie(db, user))
+
+    response = client.post(  # plain form post: no CSRF header, as a real browser sends it
+        "/login",
+        data={"email": "back@example.com", "password": DEFAULT_PASSWORD},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"
+    assert SESSION_COOKIE in response.cookies  # a fresh session replaced the expired one
+    assert client.get("/api/v1/auth/me").json()["email"] == "back@example.com"
+
+
+def test_login_form_with_revoked_session_cookie_logs_in(client: TestClient, db: Session) -> None:
+    make_user(db, email="revoked@example.com")
+    client.cookies.set(SESSION_COOKIE, new_session_token())  # no session row: revoked/unknown
+
+    response = client.post(
+        "/login",
+        data={"email": "revoked@example.com", "password": DEFAULT_PASSWORD},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+
+def test_live_session_still_requires_csrf_on_web_posts(client_as: ClientAs) -> None:
+    seller = client_as("seller")
+
+    assert seller.post("/logout", headers={CSRF_HEADER: "forged"}).status_code == 403
 
 
 def test_web_login_logout_flow(client: TestClient, db: Session) -> None:

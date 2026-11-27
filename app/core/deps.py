@@ -67,11 +67,13 @@ def require_roles(*roles: UserRole) -> Callable[[User], User]:
     return dependency
 
 
-def require_csrf(request: Request) -> None:
-    if request.method in SAFE_METHODS:
+def require_csrf(request: Request, user: OptionalUser) -> None:
+    """CSRF protects authenticated sessions only. A request without a LIVE session (no cookie,
+    or an expired/revoked one) is anonymous: it can do nothing a forged request could abuse,
+    and routes that need a user reject it with 401 anyway. This keeps the plain login form
+    working for a browser that still carries a stale cookie."""
+    if request.method in SAFE_METHODS or user is None:
         return
-    token = request.cookies.get(SESSION_COOKIE)
-    if token is None:  # anonymous request (e.g. login): nothing to protect
-        return
+    token = request.cookies[SESSION_COOKIE]  # a live session implies the cookie is present
     if not csrf_token_is_valid(token, request.headers.get(CSRF_HEADER)):
         raise Forbidden("Invalid or missing CSRF token", code="csrf_failed")

@@ -2,6 +2,7 @@
 name = "sistema-erp"
 version = "0.1.0"
 description = "Mini-ERP with an order-to-cash flow and automatic double-entry bookkeeping (Argentina)."
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [

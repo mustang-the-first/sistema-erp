@@ -1,0 +1,15 @@
+<div class="grid">
+  <label>Razón social <input name="name" value="{{ supplier.name if supplier else '' }}" required maxlength="200"></label>
+  <label>CUIT <input name="cuit" value="{{ supplier.cuit if supplier else '' }}" placeholder="30-12345678-1" required maxlength="13"></label>
+  <label>Condición frente al IVA
+    <select name="tax_condition">
+      {% for cond, label in tax_condition_labels.items() %}
+      <option value="{{ cond.value }}"{% if supplier and supplier.tax_condition == cond %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</div>
+<div class="grid">
+  <label>Email <input name="email" type="email" value="{{ (supplier.email or '') if supplier else '' }}" maxlength="255"></label>
+  <label>Teléfono <input name="phone" value="{{ (supplier.phone or '') if supplier else '' }}" maxlength="50"></label>
+</div>

@@ -1,0 +1,26 @@
+<table class="striped">
+  <thead>
+    <tr>
+      <th>SKU</th><th>Nombre</th><th>Unidad</th><th class="num">Precio neto</th><th>IVA</th>
+      <th class="num">Costo</th><th class="num">Stock</th><th class="num">Mínimo</th><th>Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>{% if user and user.role == "admin" %}<a href="/products/{{ p.id }}">{{ p.sku }}</a>{% else %}{{ p.sku }}{% endif %}</td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.unit }}</td>
+      <td class="num">{{ p.unit_price | ars }}</td>
+      <td>{{ vat_labels[p.vat_rate] }}</td>
+      <td class="num">{{ p.unit_cost | ars }}</td>
+      <td class="num">{% if p.stock_qty <= p.min_stock %}<mark>{{ p.stock_qty }}</mark>{% else %}{{ p.stock_qty }}{% endif %}</td>
+      <td class="num">{{ p.min_stock }}</td>
+      <td>{{ "Activo" if p.is_active else "Inactivo" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9">No hay productos.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<small>{{ products | length }} de {{ total }} productos</small>

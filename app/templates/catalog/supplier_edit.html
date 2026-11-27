@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ supplier.name }} · Proveedores · Sistema ERP{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ul><li><a href="/suppliers">Proveedores</a></li><li>{{ supplier.name }}</li></ul></nav>
+<h1>{{ supplier.name }}</h1>
+<form hx-patch="/suppliers/{{ supplier.id }}" hx-target="#flash">
+  {% include "catalog/_supplier_fields.html" %}
+  <label><input type="checkbox" role="switch" name="is_active"{% if supplier.is_active %} checked{% endif %}> Activo</label>
+  <button type="submit">Guardar</button>
+</form>
+{% endblock %}

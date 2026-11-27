@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Clientes · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Clientes</h1>
+<form id="customers-filter" role="search" hx-get="/customers" hx-vals='{"partial": "true"}'
+      hx-target="#customers-table" hx-trigger="submit, change">
+  <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre o CUIT" aria-label="Buscar">
+  {% include "catalog/_active_filter.html" %}
+  <button type="submit">Buscar</button>
+</form>
+<div id="customers-table" hx-get="/customers" hx-vals='{"partial": "true"}' hx-include="#customers-filter"
+     hx-trigger="customers-changed from:body">
+  {% include "catalog/_customers_table.html" %}
+</div>
+
+<details>
+  <summary role="button" class="outline">Nuevo cliente</summary>
+  <form hx-post="/customers" hx-target="#flash">
+    {% set customer = None %}
+    {% include "catalog/_customer_fields.html" %}
+    <button type="submit">Crear cliente</button>
+  </form>
+</details>
+{% endblock %}

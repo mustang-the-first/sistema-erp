@@ -1,0 +1,5 @@
+<select name="active" aria-label="Estado">
+  <option value="true"{% if active == "true" %} selected{% endif %}>Activos</option>
+  <option value="false"{% if active == "false" %} selected{% endif %}>Inactivos</option>
+  <option value="all"{% if active not in ("true", "false") %} selected{% endif %}>Todos</option>
+</select>

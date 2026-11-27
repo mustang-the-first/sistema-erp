@@ -10,8 +10,9 @@ integración con ARCA.
 Proyecto de portfolio. El diseño completo, con el modelo de datos, los contratos de la API y las
 decisiones tomadas, está en [`docs/plan.md`](docs/plan.md).
 
-> **Demo online:** _(link pendiente: se agrega al publicar el deploy)_. Usuarios y contraseña
-> están en la página de login de la demo. Los datos se reinician todos los días.
+> **Demo online: <https://sistema-erp-demo.onrender.com>**. Los usuarios y la contraseña están
+> en la página de login. Los datos se reinician todos los días. Al estar en el plan gratuito, la
+> primera visita después de un rato sin uso puede tardar alrededor de un minuto en cargar.
 
 ![Flujo pedido → remito → factura → cobranza](docs/img/flujo-order-to-cash.gif)
 
@@ -178,8 +179,8 @@ El proyecto se planificó y desarrolló por olas (detalle en [`docs/plan.md`](do
   una base de test propia. Se mergearon de a uno, con `make check` después de cada merge.
 - [x] **Ola 3:** integración. Correcciones transversales (roles, CSRF, errores web, formato único
   de 422), test end-to-end, datos de demo y este README.
-- [ ] **Ola 4:** deploy y demo online. Ya están el modo demo, el reset diario, la configuración de
-  producción, las capturas y el GIF; falta elegir proveedor y publicar.
+- [x] **Ola 4:** deploy de la demo pública en Render + Neon, con modo demo, reset diario,
+  configuración de producción, capturas y GIF.
 
 ## Licencia
 

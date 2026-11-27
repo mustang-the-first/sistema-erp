@@ -129,7 +129,7 @@ def test_post_receipt_form_invalid_fields_show_error(client_as: ClientAs, db: Se
     )
 
     assert response.headers["HX-Retarget"] == "#flash"
-    assert "Datos inválidos" in response.text
+    assert "customer_id" in response.text  # the shared validation handler names the field
     assert receipt_count(db) == 0
 
 

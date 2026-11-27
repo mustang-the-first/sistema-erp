@@ -1,8 +1,10 @@
 """Domain exceptions raised by services, and their translation to HTTP responses."""
 
-from typing import ClassVar
+from collections.abc import Sequence
+from typing import Any, ClassVar
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 
@@ -87,5 +89,32 @@ async def domain_error_handler(request: Request, exc: Exception) -> Response:
     return error_response(request, status_code=exc.status_code, detail=exc.message, code=exc.code)
 
 
+VALIDATION_ERROR_CODE = "validation_error"
+_LOCATION_PREFIXES = frozenset({"body", "query", "path", "header", "cookie", "form"})
+
+
+def format_validation_errors(errors: Sequence[Any]) -> str:
+    """``quantity: Input should be greater than 0; date: Input should be a valid date``"""
+    parts = []
+    for error in errors:
+        loc = [str(p) for p in error.get("loc", ()) if p not in _LOCATION_PREFIXES]
+        field = ".".join(loc)
+        parts.append(f"{field}: {error.get('msg', 'invalid value')}" if field else error["msg"])
+    return "; ".join(parts) or "Invalid request"
+
+
+async def validation_error_handler(request: Request, exc: Exception) -> Response:
+    """Schema validation errors use the same ``{"detail", "code"}`` format as business rules."""
+    if not isinstance(exc, RequestValidationError):  # pragma: no cover - registered for it only
+        raise exc
+    return error_response(
+        request,
+        status_code=422,
+        detail=format_validation_errors(exc.errors()),
+        code=VALIDATION_ERROR_CODE,
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(DomainError, domain_error_handler)
+    app.add_exception_handler(RequestValidationError, validation_error_handler)

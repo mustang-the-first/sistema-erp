@@ -8,13 +8,14 @@ import datetime as dt
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, Response
 from pydantic import ValidationError
 
 from app.core.clock import today
 from app.core.db import DbSession
 from app.core.deps import CurrentUser, require_roles
-from app.core.errors import BusinessRuleViolation, htmx_flash_error
+from app.core.errors import BusinessRuleViolation
 from app.core.templating import templates
 from app.models.enums import PaymentMethod, UserRole
 from app.schemas.collections import parse_receipt_form
@@ -62,14 +63,8 @@ async def create_receipt(request: Request, db: DbSession, user: CurrentUser) -> 
     form = await request.form()
     try:
         body = parse_receipt_form({k: v for k, v in form.items() if isinstance(v, str)})
-    except ValidationError as exc:  # point 5 replaces this with the shared validation handler
-        return htmx_flash_error(
-            request,
-            "Datos inválidos: "
-            + "; ".join(
-                f"{'.'.join(str(p) for p in err['loc'])}: {err['msg']}" for err in exc.errors()
-            ),
-        )
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors()) from exc
     # Errors propagate: the shared handler renders them into #flash and the request rolls back.
     receipt = service.create_receipt(
         db,

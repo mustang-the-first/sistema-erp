@@ -11,12 +11,13 @@ import datetime as dt
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Form, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 
 from app.core.db import DbSession
 from app.core.deps import require_roles
-from app.core.errors import BusinessRuleViolation, DomainError, htmx_flash_error
+from app.core.errors import BusinessRuleViolation, DomainError
 from app.core.templating import templates
 from app.models.enums import AccountType, JournalSourceType, UserRole
 from app.schemas.accounting import AccountCreate, AccountUpdate
@@ -51,10 +52,6 @@ def _parse_date(value: str | None, label: str) -> dt.date | None:
         return dt.date.fromisoformat(value)
     except ValueError as exc:
         raise BusinessRuleViolation(f"Invalid date for '{label}': {value}") from exc
-
-
-def _validation_message(exc: ValidationError) -> str:
-    return "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
 
 
 def _tree_context(db: DbSession) -> dict[str, Any]:
@@ -96,8 +93,8 @@ def create_account(
             code=code, name=name, type=parent.type, parent_id=parent.id, is_postable=is_postable
         )
         account = service.create_account(db, **body.model_dump())
-    except ValidationError as exc:  # point 5 replaces this with the shared validation handler
-        return htmx_flash_error(request, _validation_message(exc))
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors()) from exc
     return _tree(request, db, f"Cuenta {account.code} creada")
 
 
@@ -112,8 +109,8 @@ def update_account(
     try:
         body = AccountUpdate(name=name, is_active=is_active)
         account = service.update_account(db, account_id, **body.model_dump(exclude_unset=True))
-    except ValidationError as exc:  # point 5 replaces this with the shared validation handler
-        return htmx_flash_error(request, _validation_message(exc))
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors()) from exc
     return _tree(request, db, f"Cuenta {account.code} actualizada")
 
 

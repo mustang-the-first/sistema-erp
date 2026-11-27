@@ -1,9 +1,10 @@
 import re
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from typing import Annotated
 
 import pytest
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -220,3 +221,43 @@ def test_forbidden_is_never_flashed_as_success(error_app: FastAPI) -> None:
 
     assert response.status_code == 403
     assert "HX-Retarget" not in response.headers
+
+
+@pytest.fixture
+def typed_app(app: FastAPI) -> FastAPI:
+    @app.get("/api/v1/_test/typed")
+    def api_typed(quantity: Annotated[int, Query(gt=0)]) -> dict[str, int]:
+        return {"quantity": quantity}
+
+    @app.get("/_test/typed")
+    def web_typed(quantity: Annotated[int, Query(gt=0)]) -> dict[str, int]:
+        return {"quantity": quantity}
+
+    return app
+
+
+@pytest.mark.parametrize("value", ["abc", "0"])
+def test_schema_validation_errors_use_detail_and_code(typed_app: FastAPI, value: str) -> None:
+    response = TestClient(typed_app).get("/api/v1/_test/typed", params={"quantity": value})
+
+    assert response.status_code == 422
+    body = response.json()
+    assert set(body) == {"detail", "code"}
+    assert body["code"] == "validation_error"
+    assert body["detail"].startswith("quantity: ")
+
+
+def test_missing_field_is_reported_by_name(typed_app: FastAPI) -> None:
+    body = TestClient(typed_app).get("/api/v1/_test/typed").json()
+
+    assert body == {"detail": "quantity: Field required", "code": "validation_error"}
+
+
+def test_htmx_schema_validation_error_is_flashed(typed_app: FastAPI) -> None:
+    response = TestClient(typed_app).get(
+        "/_test/typed", params={"quantity": "abc"}, headers={"HX-Request": "true"}
+    )
+
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#flash"
+    assert "quantity" in response.text

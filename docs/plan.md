@@ -498,7 +498,11 @@ Convenciones compartidas de la API (para que los 7 módulos sean consistentes):
 - Montos y cantidades se serializan como **string decimal** (`"1762.50"`, Pydantic v2 con
   `Decimal`); fechas ISO `YYYY-MM-DD`.
 - Listados: `?limit=50&offset=0` (máx. 200) y respuesta `{"items": [...], "total": n}`.
-- Errores: excepciones de `app/core/errors.py` → `{"detail", "code"}` (401/403/404/422).
+- Errores: **un solo formato** `{"detail", "code"}` para todo (401/403/404/422). Las reglas de
+  negocio usan su propio `code`; la validación de schemas usa `code: "validation_error"` con
+  `detail` = `campo: mensaje; ...`. En vistas web, los 404/422 de HTMX y de escrituras se
+  muestran en `#flash` (status 200, `HX-Retarget`) vía el handler compartido; el 403 conserva
+  su status. Ningún router web arma su propia respuesta de error.
 - Roles con `require_roles(...)` en el router o el endpoint; el admin siempre pasa.
 - `created_by` = usuario actual; fecha por defecto `app.core.clock.today()`; punto de venta
   `get_settings().point_of_sale`.

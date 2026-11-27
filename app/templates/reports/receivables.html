@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Cuentas a cobrar · Sistema ERP{% endblock %}
+{% block content %}
+{% include "reports/_tabs.html" %}
+<h1>Cuentas a cobrar por antigüedad</h1>
+<form id="receivables-filters" hx-get="/reports/receivables" hx-target="#receivables-results"
+      hx-swap="innerHTML" hx-trigger="submit, change" hx-push-url="true">
+  <div class="grid">
+    <label>Al
+      <input type="date" name="as_of" value="{{ report.as_of.isoformat() }}">
+    </label>
+  </div>
+  <button type="submit" class="no-print">Ver</button>
+</form>
+<div id="receivables-results">{% include partial %}</div>
+{% endblock %}

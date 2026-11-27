@@ -1,0 +1,7 @@
+<nav aria-label="Reportes">
+  <ul>
+    {% for label, href in tabs %}
+    <li><a href="{{ href }}"{% if request.url.path == href %} aria-current="page"{% endif %}>{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>

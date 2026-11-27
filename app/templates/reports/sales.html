@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Reporte de ventas · Sistema ERP{% endblock %}
+{% block content %}
+{% include "reports/_tabs.html" %}
+<h1>Ventas por período</h1>
+<form id="sales-filters" hx-get="/reports/sales" hx-target="#sales-results" hx-swap="innerHTML"
+      hx-trigger="submit, change" hx-push-url="true">
+  <div class="grid">
+    <label>Desde
+      <input type="date" name="from" value="{{ date_from.isoformat() if date_from else '' }}">
+    </label>
+    <label>Hasta
+      <input type="date" name="to" value="{{ date_to.isoformat() if date_to else '' }}">
+    </label>
+    <label>Agrupar por
+      <select name="group_by">
+        {% for value, label in group_by_labels.items() %}
+        <option value="{{ value.value }}"{% if value == group_by %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <button type="submit" class="no-print">Ver</button>
+</form>
+<div id="sales-results">{% include partial %}</div>
+{% endblock %}

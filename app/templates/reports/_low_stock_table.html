@@ -1,0 +1,31 @@
+<div class="overflow-auto">
+<table class="striped" id="low-stock-table">
+  <thead>
+    <tr>
+      <th scope="col">SKU</th>
+      <th scope="col">Producto</th>
+      <th scope="col" class="num">Stock</th>
+      <th scope="col" class="num">Mínimo</th>
+      <th scope="col" class="num">Faltante</th>
+      <th scope="col">Proveedor preferido</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in report.items %}
+    <tr>
+      <td>{{ item.sku }}</td>
+      <td>{{ item.name }}</td>
+      <td class="num">{{ item.stock_qty }} {{ item.unit }}</td>
+      <td class="num">{{ item.min_stock }}</td>
+      <td class="num">{{ item.shortfall }}</td>
+      <td>{{ item.supplier_name or "—" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">No hay productos con stock bajo.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if report.total > report.items | length %}
+<p>Mostrando {{ report.items | length }} de {{ report.total }} productos.</p>
+{% endif %}

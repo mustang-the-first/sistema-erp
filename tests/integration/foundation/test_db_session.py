@@ -62,6 +62,7 @@ def build_app(factory: sessionmaker[Session], user_id: int) -> FastAPI:
         )
         return {"id": entry.id}
 
+    @app.post("/api/v1/_test/domain-error")
     @app.post("/_test/domain-error")
     def domain_error(db: DbSession) -> None:
         _entry(
@@ -109,8 +110,20 @@ def test_successful_request_is_committed(
 def test_domain_error_rolls_back_the_request(
     client: TestClient, committed_factory: sessionmaker[Session]
 ) -> None:
-    response = client.post("/_test/domain-error")
+    response = client.post("/api/v1/_test/domain-error")
 
     assert response.status_code == 422
     assert response.json() == {"detail": "nope", "code": "business_rule_violation"}
+    assert entries(committed_factory) == 0
+
+
+def test_web_domain_error_is_flashed_and_still_rolls_back(
+    client: TestClient, committed_factory: sessionmaker[Session]
+) -> None:
+    """200 + #flash for HTMX, but the request transaction is rolled back all the same."""
+    response = client.post("/_test/domain-error", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#flash"
+    assert "nope" in response.text
     assert entries(committed_factory) == 0

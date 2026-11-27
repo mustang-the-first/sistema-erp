@@ -40,6 +40,43 @@ def _is_api(request: Request) -> bool:
     return request.url.path.startswith("/api/")
 
 
+# Web errors -------------------------------------------------------------------------------
+# HTMX does not swap 4xx responses, so a rejected web form would show nothing. Web requests
+# made by HTMX (or any web write: without HTMX's CSRF header a logged-in write is already a 403)
+# get their 404/422 rendered into #flash with status 200 instead. 401 redirects to /login and
+# 403 keeps its status: a forbidden action is never disguised as a success.
+FLASH_TARGET = "#flash"
+FLASH_STATUSES = frozenset({404, 422})
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+def htmx_flash_error(request: Request, detail: str) -> Response:
+    """The shared web error response: ``partials/error.html`` swapped into ``#flash``."""
+    from app.core.templating import templates  # local import: templating imports the models
+
+    return templates.TemplateResponse(
+        request,
+        "partials/error.html",
+        {"detail": detail},
+        headers={"HX-Retarget": FLASH_TARGET, "HX-Reswap": "innerHTML"},
+    )
+
+
+def _wants_flash(request: Request, status_code: int) -> bool:
+    return (
+        not _is_api(request)
+        and status_code in FLASH_STATUSES
+        and (bool(request.headers.get("HX-Request")) or request.method not in _SAFE_METHODS)
+    )
+
+
+def error_response(request: Request, *, status_code: int, detail: str, code: str) -> Response:
+    """One error format everywhere: ``{"detail", "code"}`` JSON, or the #flash partial."""
+    if _wants_flash(request, status_code):
+        return htmx_flash_error(request, detail)
+    return JSONResponse(status_code=status_code, content={"detail": detail, "code": code})
+
+
 async def domain_error_handler(request: Request, exc: Exception) -> Response:
     if not isinstance(exc, DomainError):  # pragma: no cover - registered for DomainError only
         raise exc
@@ -47,9 +84,7 @@ async def domain_error_handler(request: Request, exc: Exception) -> Response:
         if request.headers.get("HX-Request"):
             return Response(status_code=401, headers={"HX-Redirect": "/login"})
         return RedirectResponse("/login", status_code=303)
-    return JSONResponse(
-        status_code=exc.status_code, content={"detail": exc.message, "code": exc.code}
-    )
+    return error_response(request, status_code=exc.status_code, detail=exc.message, code=exc.code)
 
 
 def register_exception_handlers(app: FastAPI) -> None:

@@ -2,9 +2,9 @@
 
 Owner: agent C · Accounting (docs/plan.md). Roles: accountant (admin always passes).
 
-HTMX writes (``hx-post`` / ``hx-patch``) answer with the re-rendered account tree. A domain or
-validation error answers 200 with ``HX-Retarget: #flash`` so HTMX swaps the message into the
-flash area (HTMX does not swap 4xx responses by default) and the tree stays untouched.
+HTMX writes (``hx-post`` / ``hx-patch``) answer with the re-rendered account tree. Domain errors
+propagate to the shared handler (``app/core/errors.py``), which renders them into ``#flash`` and
+rolls the request back; the tree stays untouched.
 """
 
 import datetime as dt
@@ -16,7 +16,7 @@ from pydantic import ValidationError
 
 from app.core.db import DbSession
 from app.core.deps import require_roles
-from app.core.errors import BusinessRuleViolation, DomainError
+from app.core.errors import BusinessRuleViolation, DomainError, htmx_flash_error
 from app.core.templating import templates
 from app.models.enums import AccountType, JournalSourceType, UserRole
 from app.schemas.accounting import AccountCreate, AccountUpdate
@@ -55,15 +55,6 @@ def _parse_date(value: str | None, label: str) -> dt.date | None:
 
 def _validation_message(exc: ValidationError) -> str:
     return "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
-
-
-def _error(request: Request, message: str) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "partials/error.html",
-        {"detail": message},
-        headers={"HX-Retarget": "#flash", "HX-Reswap": "innerHTML"},
-    )
 
 
 def _tree_context(db: DbSession) -> dict[str, Any]:
@@ -105,10 +96,8 @@ def create_account(
             code=code, name=name, type=parent.type, parent_id=parent.id, is_postable=is_postable
         )
         account = service.create_account(db, **body.model_dump())
-    except ValidationError as exc:
-        return _error(request, _validation_message(exc))
-    except DomainError as exc:
-        return _error(request, exc.message)
+    except ValidationError as exc:  # point 5 replaces this with the shared validation handler
+        return htmx_flash_error(request, _validation_message(exc))
     return _tree(request, db, f"Cuenta {account.code} creada")
 
 
@@ -123,10 +112,8 @@ def update_account(
     try:
         body = AccountUpdate(name=name, is_active=is_active)
         account = service.update_account(db, account_id, **body.model_dump(exclude_unset=True))
-    except ValidationError as exc:
-        return _error(request, _validation_message(exc))
-    except DomainError as exc:
-        return _error(request, exc.message)
+    except ValidationError as exc:  # point 5 replaces this with the shared validation handler
+        return htmx_flash_error(request, _validation_message(exc))
     return _tree(request, db, f"Cuenta {account.code} actualizada")
 
 

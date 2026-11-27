@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app import main
 from app.core.db import get_db
 from app.core.deps import CurrentUser, require_csrf, require_roles
+from app.core.errors import Forbidden, NotFound
 from app.core.security import CSRF_HEADER
 from app.core.templating import templates
 from app.models.enums import UserRole
@@ -185,3 +186,37 @@ def test_failed_request_does_not_roll_back_arranged_data(client_as: ClientAs, db
     assert db.get(User, seller_id) is not None
     assert seller.get("/api/v1/_test/me").status_code == 200  # session row still there
     assert accountant.get("/api/v1/_test/me").status_code == 200
+
+
+@pytest.fixture
+def error_app(app: FastAPI) -> FastAPI:
+    @app.get("/_test/missing")
+    def missing() -> None:
+        raise NotFound("Thing 9 not found")
+
+    @app.get("/_test/forbidden-thing")
+    def forbidden_thing() -> None:
+        raise Forbidden("nope")
+
+    return app
+
+
+def test_htmx_not_found_is_flashed(error_app: FastAPI) -> None:
+    response = TestClient(error_app).get("/_test/missing", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert response.headers["HX-Retarget"] == "#flash"
+    assert "Thing 9 not found" in response.text
+
+
+def test_plain_web_get_error_keeps_status_and_json(error_app: FastAPI) -> None:
+    response = TestClient(error_app).get("/_test/missing")
+
+    assert (response.status_code, response.json()["code"]) == (404, "not_found")
+
+
+def test_forbidden_is_never_flashed_as_success(error_app: FastAPI) -> None:
+    response = TestClient(error_app).get("/_test/forbidden-thing", headers={"HX-Request": "true"})
+
+    assert response.status_code == 403
+    assert "HX-Retarget" not in response.headers

@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse
 
 from app.core.db import DbSession
 from app.core.deps import require_roles
-from app.core.errors import BusinessRuleViolation, NotFound
+from app.core.errors import BusinessRuleViolation
 from app.core.templating import templates
 from app.models.enums import InvoiceLetter, UserRole
 from app.models.users import User
@@ -121,23 +121,9 @@ def invoice_delivery_note(
 ) -> Response:
     invoice_date = _parse(dt.date.fromisoformat, date)
     if date and invoice_date is None:
-        return _error(request, "Fecha inválida")
-    try:
-        # Savepoint: a rejected invoice leaves nothing behind before the request commits.
-        with db.begin_nested():
-            view = service.issue_invoice(
-                db, delivery_note_id, created_by=user.id, invoice_date=invoice_date
-            )
-    except (BusinessRuleViolation, NotFound) as exc:
-        return _error(request, exc.message)
-    return Response(status_code=204, headers={"HX-Redirect": f"/invoices/{view.invoice.id}"})
-
-
-def _error(request: Request, detail: str) -> HTMLResponse:
-    """HTMX does not swap 4xx bodies: answer 200 and retarget the error into #flash."""
-    return templates.TemplateResponse(
-        request,
-        "partials/error.html",
-        {"detail": detail},
-        headers={"HX-Retarget": "#flash", "HX-Reswap": "innerHTML"},
+        raise BusinessRuleViolation("Fecha inválida", code="invalid_date")
+    # Errors propagate: the shared handler renders them into #flash and the request rolls back.
+    view = service.issue_invoice(
+        db, delivery_note_id, created_by=user.id, invoice_date=invoice_date
     )
+    return Response(status_code=204, headers={"HX-Redirect": f"/invoices/{view.invoice.id}"})

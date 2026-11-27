@@ -3,7 +3,8 @@
 Owner: agent D1 · Orders & delivery notes (docs/plan.md). Roles: seller (admin always passes).
 
 Writes go through ``hx-post``/``hx-patch`` (CSRF header). On success the response carries
-``HX-Redirect``; a domain error is rendered into ``#flash`` (status 200 so HTMX swaps it).
+``HX-Redirect``; domain errors propagate and the shared handler in ``app/core/errors.py``
+renders them into ``#flash`` (and the request transaction is rolled back).
 Services are atomic: a rejected command leaves nothing behind.
 """
 
@@ -16,7 +17,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from app.core.db import DbSession
 from app.core.deps import require_roles
-from app.core.errors import BusinessRuleViolation, NotFound
+from app.core.errors import BusinessRuleViolation
 from app.core.templating import templates
 from app.models.enums import OrderStatus, UserRole
 from app.models.users import User
@@ -58,15 +59,6 @@ def _parse_pairs(ids: list[str], quantities: list[str]) -> list[tuple[int, Decim
                 f"Invalid quantity {raw_qty!r}", code="bad_quantity"
             ) from exc
     return pairs
-
-
-def _error(request: Request, exc: BusinessRuleViolation | NotFound) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "partials/error.html",
-        {"detail": exc.message},
-        headers={"HX-Retarget": "#flash", "HX-Reswap": "innerHTML"},
-    )
 
 
 def _redirect(url: str) -> Response:
@@ -146,20 +138,17 @@ def create(
     date: Annotated[str | None, Form()] = None,
     notes: Annotated[str | None, Form()] = None,
 ) -> Response:
-    try:
-        view = order_service.create_order(
-            db,
-            customer_id=customer_id,
-            order_date=_parse_date(date),
-            notes=notes or None,
-            lines=[
-                order_service.OrderLineInput(pid, qty)
-                for pid, qty in _parse_pairs(product_id, quantity)
-            ],
-            created_by=user.id,
-        )
-    except (BusinessRuleViolation, NotFound) as exc:
-        return _error(request, exc)
+    view = order_service.create_order(
+        db,
+        customer_id=customer_id,
+        order_date=_parse_date(date),
+        notes=notes or None,
+        lines=[
+            order_service.OrderLineInput(pid, qty)
+            for pid, qty in _parse_pairs(product_id, quantity)
+        ],
+        created_by=user.id,
+    )
     return _redirect(f"/orders/{view.order.id}")
 
 
@@ -173,36 +162,27 @@ def update(
     quantity: FormList,
     notes: Annotated[str | None, Form()] = None,
 ) -> Response:
-    try:
-        order_service.update_order(
-            db,
-            order_id,
-            notes=notes or None,
-            lines=[
-                order_service.OrderLineInput(pid, qty)
-                for pid, qty in _parse_pairs(product_id, quantity)
-            ],
-        )
-    except (BusinessRuleViolation, NotFound) as exc:
-        return _error(request, exc)
+    order_service.update_order(
+        db,
+        order_id,
+        notes=notes or None,
+        lines=[
+            order_service.OrderLineInput(pid, qty)
+            for pid, qty in _parse_pairs(product_id, quantity)
+        ],
+    )
     return _redirect(f"/orders/{order_id}")
 
 
 @router.post("/orders/{order_id}/confirm")
 def confirm(request: Request, order_id: int, db: DbSession, _: Seller) -> Response:
-    try:
-        order_service.confirm_order(db, order_id)
-    except (BusinessRuleViolation, NotFound) as exc:
-        return _error(request, exc)
+    order_service.confirm_order(db, order_id)
     return _redirect(f"/orders/{order_id}")
 
 
 @router.post("/orders/{order_id}/cancel")
 def cancel(request: Request, order_id: int, db: DbSession, _: Seller) -> Response:
-    try:
-        order_service.cancel_order(db, order_id)
-    except (BusinessRuleViolation, NotFound) as exc:
-        return _error(request, exc)
+    order_service.cancel_order(db, order_id)
     return _redirect(f"/orders/{order_id}")
 
 
@@ -216,17 +196,14 @@ def deliver(
     quantity: FormList,
     date: Annotated[str | None, Form()] = None,
 ) -> Response:
-    try:
-        note = delivery_service.create_delivery_note(
-            db,
-            order_id,
-            note_date=_parse_date(date),
-            lines=[
-                delivery_service.DeliveryLineInput(line_id, qty)
-                for line_id, qty in _parse_pairs(order_line_id, quantity)
-            ],
-            created_by=user.id,
-        )
-    except (BusinessRuleViolation, NotFound) as exc:
-        return _error(request, exc)
+    note = delivery_service.create_delivery_note(
+        db,
+        order_id,
+        note_date=_parse_date(date),
+        lines=[
+            delivery_service.DeliveryLineInput(line_id, qty)
+            for line_id, qty in _parse_pairs(order_line_id, quantity)
+        ],
+        created_by=user.id,
+    )
     return _redirect(f"/delivery-notes/{note.id}")

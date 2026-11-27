@@ -10,7 +10,15 @@ integración con ARCA.
 Proyecto de portfolio. El diseño completo, con el modelo de datos, los contratos de la API y las
 decisiones tomadas, está en [`docs/plan.md`](docs/plan.md).
 
-> **Demo online y capturas:** se agregan en la Ola 4 (deploy).
+> **Demo online:** _(link pendiente: se agrega al publicar el deploy)_. Usuarios y contraseña
+> están en la página de login de la demo. Los datos se reinician todos los días.
+
+![Flujo pedido → remito → factura → cobranza](docs/img/flujo-order-to-cash.gif)
+
+| | |
+|---|---|
+| **Pedido** con su remito pendiente de facturar ![Pedido](docs/img/pedido.png) | **Factura A imprimible** a monotributista, con la leyenda de la Ley 27.618 ![Factura A](docs/img/factura-a-monotributo.png) |
+| **Libro mayor** de Deudores por ventas, con saldo acumulado ![Libro mayor](docs/img/libro-mayor.png) | **Cuentas a cobrar** por antigüedad (el total coincide con el mayor) ![Cuentas a cobrar](docs/img/cuentas-a-cobrar.png) |
 
 ## Qué hace
 
@@ -79,8 +87,8 @@ O todo en contenedores: `make up`.
 
 ### Usuarios de demo
 
-`seed_demo` crea un usuario por rol. La contraseña se toma de `ERP_DEMO_PASSWORD` y, si no está
-definida, es `demo-erp-2026`.
+`seed_demo` crea un usuario por rol. La contraseña se toma de `ERP_DEMO_PASSWORD` (en desarrollo,
+si no está definida, es `demo-erp-2026`; en producción es obligatoria).
 
 | Usuario | Rol | Ve |
 |---|---|---|
@@ -88,11 +96,29 @@ definida, es `demo-erp-2026`.
 | `vendedor@demo.local` | Vendedor | Pedidos, remitos, facturas, cobranzas, clientes, reportes de ventas y stock bajo |
 | `contador@demo.local` | Contador | Facturas, cobranzas, plan de cuentas, libro diario, libro mayor, ventas y cuentas a cobrar |
 
-Los datos de demo cubren 90 días: 8 facturas A y B, cobranzas parciales y totales, saldos en
-todos los tramos de antigüedad, un pedido en borrador, uno confirmado sin entregar y un remito
+Los datos de demo cubren unos 4 meses: 8 facturas A y B, cobranzas parciales y totales, saldos en
+los cuatro tramos de antigüedad, un pedido en borrador, uno confirmado sin entregar y un remito
 pendiente de facturar (con el botón "Facturar" en la página del pedido).
 
 Para un admin propio: `uv run python -m scripts.create_admin --email ... --name ...`.
+
+## Producción y demo pública
+
+- **Variables obligatorias en producción** (`ERP_ENV=production`): `ERP_DATABASE_URL` (o
+  `DATABASE_URL`; se aceptan URLs `postgres://`) y `ERP_SECRET_KEY` (32+ caracteres). Con
+  `ERP_DEMO_MODE=true` también `ERP_DEMO_PASSWORD`. Si falta alguna, **la app no arranca** y dice
+  cuál falta. Ver [`.env.example`](.env.example).
+- **Al arrancar** el contenedor corre `alembic upgrade head` y después uvicorn (con
+  `--proxy-headers`, para URLs https detrás del proxy del proveedor). Healthcheck: `GET /health`.
+- **Cookies de sesión** `HttpOnly`, `SameSite=Lax` y `Secure` en producción; la documentación
+  `/docs` se desactiva.
+- **Modo demo** (`ERP_DEMO_MODE=true`): banner en todas las páginas; las cuentas demo no pueden
+  cambiar contraseñas ni roles, ni desactivar usuarios; la página de login muestra las cuentas.
+- **Reset diario:** `make demo-reset` (o `python -m scripts.reset_demo`) vacía la base y vuelve a
+  cargar la demo en una sola transacción; se niega a correr si `ERP_DEMO_MODE` no es `true`. Lo
+  programa [`.github/workflows/demo-reset.yml`](.github/workflows/demo-reset.yml) todos los días a
+  las 03:00 (Argentina), una vez definidos la variable `DEMO_RESET_ENABLED=true` y los secretos
+  `DEMO_DATABASE_URL`, `DEMO_SECRET_KEY` y `DEMO_PASSWORD`.
 
 ## Tests y calidad
 
@@ -152,7 +178,12 @@ El proyecto se planificó y desarrolló por olas (detalle en [`docs/plan.md`](do
   una base de test propia. Se mergearon de a uno, con `make check` después de cada merge.
 - [x] **Ola 3:** integración. Correcciones transversales (roles, CSRF, errores web, formato único
   de 422), test end-to-end, datos de demo y este README.
-- [ ] **Ola 4:** deploy, demo online y capturas.
+- [ ] **Ola 4:** deploy y demo online. Ya están el modo demo, el reset diario, la configuración de
+  producción, las capturas y el GIF; falta elegir proveedor y publicar.
+
+## Licencia
+
+[MIT](LICENSE).
 
 ## Fuera de alcance
 

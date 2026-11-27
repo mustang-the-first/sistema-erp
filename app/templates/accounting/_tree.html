@@ -1,0 +1,28 @@
+{# Account tree, swapped as a whole (outerHTML) after every create/edit. #}
+{% if oob_flash %}<div id="flash" hx-swap-oob="true">{% include "partials/flash.html" %}</div>{% endif %}
+{% macro rows(nodes, depth) %}
+{% for node in nodes %}
+{% set a = node.account %}
+<tr id="account-{{ a.id }}"{% if not a.is_active %} class="inactive"{% endif %}>
+  <td style="padding-left: {{ 0.5 + depth * 1.25 }}rem">{% if a.is_postable %}{{ a.code }}{% else %}<strong>{{ a.code }}</strong>{% endif %}</td>
+  <td>
+    <form hx-patch="/accounting/accounts/{{ a.id }}" hx-target="#accounts-tree" hx-swap="outerHTML" style="display:flex; gap:.5rem; align-items:center; margin:0">
+      <input name="name" value="{{ a.name }}" required maxlength="200" aria-label="Nombre de {{ a.code }}" style="margin:0">
+      <label style="margin:0; white-space:nowrap"><input type="checkbox" name="is_active" value="true"{% if a.is_active %} checked{% endif %}> Activa</label>
+      <button type="submit" class="outline" style="margin:0; width:auto">Guardar</button>
+    </form>
+  </td>
+  <td>{{ type_labels[a.type] }}</td>
+  <td>{{ "Imputable" if a.is_postable else "Rubro" }}</td>
+</tr>
+{{ rows(node.children, depth + 1) }}
+{% endfor %}
+{% endmacro %}
+<section id="accounts-tree">
+  <table class="striped">
+    <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Clase</th></tr></thead>
+    <tbody>
+      {{ rows(tree, 0) }}
+    </tbody>
+  </table>
+</section>

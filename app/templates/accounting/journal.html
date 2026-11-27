@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Libro diario · Sistema ERP{% endblock %}
+{% block content %}
+<h1>Libro diario</h1>
+
+<form hx-get="/accounting/journal" hx-target="#journal" hx-select="#journal" hx-swap="outerHTML" hx-push-url="true">
+  <div class="grid">
+    <label>Desde <input type="date" name="from" value="{{ date_from }}"></label>
+    <label>Hasta <input type="date" name="to" value="{{ date_to }}"></label>
+    <label>Origen
+      <select name="source_type">
+        <option value="">Todos</option>
+        {% for value, label in source_labels.items() %}
+        <option value="{{ value }}"{% if source_type == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+
+<section id="journal">
+  {% if error %}<article class="flash flash-error" role="alert">{{ error }}</article>{% endif %}
+  <p>{{ total }} asiento{{ "" if total == 1 else "s" }}</p>
+  {% for entry, total_debit, total_credit in entries %}
+  <article class="journal-entry">
+    <header>
+      <strong>Asiento N° {{ entry.number }}</strong> · {{ entry.date.strftime("%d/%m/%Y") }} ·
+      {{ entry.description }} <small>({{ source_labels[entry.source_type] }} #{{ entry.source_id }})</small>
+    </header>
+    <table>
+      <thead><tr><th>Cuenta</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead>
+      <tbody>
+        {% for line in entry.lines %}
+        <tr>
+          <td>{% if line.credit > 0 %}&emsp;a {% endif %}{{ line.account.code }} · {{ line.account.name }}</td>
+          <td class="num">{% if line.debit > 0 %}{{ line.debit | ars }}{% endif %}</td>
+          <td class="num">{% if line.credit > 0 %}{{ line.credit | ars }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><th>Totales</th><th class="num">{{ total_debit | ars }}</th><th class="num">{{ total_credit | ars }}</th></tr></tfoot>
+    </table>
+  </article>
+  {% else %}
+  <p>No hay asientos para los filtros elegidos.</p>
+  {% endfor %}
+
+  {% if pages > 1 %}
+  {% set qs = "from=" ~ date_from ~ "&to=" ~ date_to ~ "&source_type=" ~ source_type %}
+  <nav class="no-print">
+    <ul>
+      {% if page > 1 %}<li><a href="/accounting/journal?{{ qs }}&page={{ page - 1 }}" hx-get="/accounting/journal?{{ qs }}&page={{ page - 1 }}" hx-target="#journal" hx-select="#journal" hx-swap="outerHTML" hx-push-url="true">« Anterior</a></li>{% endif %}
+      <li>Página {{ page }} de {{ pages }}</li>
+      {% if page < pages %}<li><a href="/accounting/journal?{{ qs }}&page={{ page + 1 }}" hx-get="/accounting/journal?{{ qs }}&page={{ page + 1 }}" hx-target="#journal" hx-select="#journal" hx-swap="outerHTML" hx-push-url="true">Siguiente »</a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}

@@ -107,7 +107,7 @@ Para un admin propio: `uv run python -m scripts.create_admin --email ... --name 
 - **Variables obligatorias en producción** (`ERP_ENV=production`): `ERP_DATABASE_URL` (o
   `DATABASE_URL`; se aceptan URLs `postgres://`) y `ERP_SECRET_KEY` (32+ caracteres). Con
   `ERP_DEMO_MODE=true` también `ERP_DEMO_PASSWORD`. Si falta alguna, **la app no arranca** y dice
-  cuál falta. Ver [`.env.example`](.env.example).
+  cuál falta. Ver [`.env.example`](.env.example). Paso a paso del deploy (Render + Neon): [`docs/deploy.md`](docs/deploy.md).
 - **Al arrancar** el contenedor corre `alembic upgrade head` y después uvicorn (con
   `--proxy-headers`, para URLs https detrás del proxy del proveedor). Healthcheck: `GET /health`.
 - **Cookies de sesión** `HttpOnly`, `SameSite=Lax` y `Secure` en producción; la documentación

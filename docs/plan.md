@@ -323,6 +323,7 @@ todo.
 | GET / PATCH | `/suppliers/{id}` | | A |
 | GET | `/stock/movements` | `?product_id&from&to&kind` | A |
 | POST | `/stock/adjustments` | `{product_id, quantity (±), reason, note, date}` → movimiento + asiento | A |
+| GET | `/stock/adjustments` | `?product_id&from&to&reason` → `{items, total}` de `{movement, journal_entry_number}` | A |
 
 ### Ventas
 | Método | Ruta | Body / query | Roles |
@@ -565,3 +566,16 @@ Orden: **Ola 0 → Ola 1 → gate → Ola 2 (7 en paralelo) → merge → Ola 3 
 10. Los locks se toman ordenados por `product_id`.
 11. `invoice_balance` tiene una única implementación, en la Fundación.
 12. En el e2e, Mercaderías se valida contra la suma de los movimientos valuados.
+
+### Desvíos aceptados (revisión de la Ola 2)
+
+Cambios respecto del contrato original, revisados y aceptados:
+
+| Módulo | Desvío | Motivo |
+|---|---|---|
+| B · Stock | `GET /stock/adjustments` (listado de ajustes con el número de asiento), no estaba en el contrato | Permite ver cada ajuste junto a su asiento sin cruzar a mano movimientos y diario |
+| B · Catálogo | El SKU es único **sin distinguir mayúsculas** (`abc-1` = `ABC-1`) | Evita productos duplicados que solo difieren en mayúsculas |
+| B · Catálogo | `payment_terms_days` (plazo de pago) va de **0 a 365** días; fuera de rango → 422 `invalid_payment_terms` | Un plazo negativo o mayor a un año es un error de carga |
+| Stock | Todo `/stock` (API y web) es **solo admin**, incluidas las lecturas | Decisión posterior a la Ola 2 (antes `GET /stock/movements` era para todos) |
+| B · Catálogo | La vista web `/products/{id}` es el formulario de edición: **solo admin**. V y C ven los productos en el listado | No se agrega una vista de solo lectura que no estaba en el alcance |
+

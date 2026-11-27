@@ -105,7 +105,6 @@ def test_orders_endpoints_accountant_is_forbidden(
 ) -> None:
     order = make_order(db, status=OrderStatus.DRAFT)
     accountant = client_as("accountant")
-    db.commit()  # keep the arranged rows when the failed request rolls back its savepoint
 
     response = accountant.request(method, path.format(id=order.id), json={})
 
@@ -265,7 +264,6 @@ def test_post_delivery_note_insufficient_stock_returns_422(
     product = make_product(db, stock=D("1"))
     order = make_order(db, lines=[(product, D("4"))])
     seller = client_as("seller")
-    db.commit()  # keep the arranged rows when the failed request rolls back its savepoint
 
     response = seller.post(
         f"/api/v1/orders/{order.id}/delivery-notes",

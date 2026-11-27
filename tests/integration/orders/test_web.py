@@ -41,7 +41,6 @@ def test_orders_list_page_filters_by_status(client_as: ClientAs, db: Session) ->
 def test_orders_pages_accountant_is_forbidden(client_as: ClientAs, db: Session) -> None:
     order = make_order(db)
     accountant = client_as("accountant")
-    db.commit()  # keep the arranged rows when a failed request rolls back its savepoint
 
     assert accountant.get("/orders").status_code == 403
     assert accountant.get(f"/orders/{order.id}").status_code == 403

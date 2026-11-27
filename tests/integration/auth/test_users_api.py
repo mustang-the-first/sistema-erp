@@ -33,7 +33,6 @@ def test_users_endpoints_are_403_for_non_admins(
 ) -> None:
     target = make_user(db)
     http = client_as(role)
-    db.commit()  # error responses roll back the request savepoint: keep the arranged rows
 
     for method, url, body in _endpoints(target.id):
         response = http.request(method, url, json=body)
@@ -186,7 +185,6 @@ def test_admin_patching_themselves_is_rejected(
 ) -> None:
     admin = client_as("admin")
     me: User = admin.user  # type: ignore[attr-defined]
-    db.commit()  # error responses roll back the request savepoint: keep the arranged rows
 
     response = admin.patch(f"{USERS}/{me.id}", json=body)
 

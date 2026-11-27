@@ -158,3 +158,17 @@ def test_layout_renders_role_nav_and_csrf_header(client_as: ClientAs) -> None:
     assert "Usuarios" not in html
     assert '"X-CSRF-Token": "' in html
     assert "htmx.min.js" in html
+
+
+def test_failed_request_does_not_roll_back_arranged_data(client_as: ClientAs, db: Session) -> None:
+    """Regression: an error response must undo only the request, never the test's setup."""
+    seller = client_as("seller")
+    seller_id = seller.user.id  # type: ignore[attr-defined]
+
+    assert seller.get("/api/v1/_test/sellers-only").status_code == 200
+    accountant = client_as("accountant")
+    assert accountant.get("/api/v1/_test/sellers-only").status_code == 403  # failed request
+
+    assert db.get(User, seller_id) is not None
+    assert seller.get("/api/v1/_test/me").status_code == 200  # session row still there
+    assert accountant.get("/api/v1/_test/me").status_code == 200

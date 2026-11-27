@@ -202,11 +202,17 @@ def app(db: Session) -> FastAPI:
     application = create_app(session_factory=sessionmaker())
 
     def override_get_db() -> Iterator[Session]:
+        """Each request runs in its own nested SAVEPOINT, like a real request transaction:
+        success releases it, an error rolls back ONLY the request's work. Rows the test arranged
+        before the request (users, sessions, documents) are never touched."""
+        request_tx = db.begin_nested()
         try:
             yield db
-            db.commit()  # releases the request SAVEPOINT; the test transaction stays open
+            if request_tx.is_active:
+                request_tx.commit()
         except BaseException:
-            db.rollback()
+            if request_tx.is_active:
+                request_tx.rollback()
             raise
 
     application.dependency_overrides[get_db] = override_get_db

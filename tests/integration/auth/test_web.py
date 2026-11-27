@@ -112,7 +112,6 @@ def test_users_page_lists_users_for_admin(client_as: ClientAs, db: Session) -> N
 def test_users_pages_are_forbidden_for_non_admins(client_as: ClientAs, db: Session) -> None:
     target = make_user(db)
     seller = client_as("seller")
-    db.commit()  # error responses roll back the request savepoint: keep the arranged rows
 
     assert seller.get("/users").status_code == 403
     assert seller.get(f"/users/{target.id}").status_code == 403
